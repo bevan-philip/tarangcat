@@ -1,0 +1,32 @@
+//
+// tarangcat overrides on top of the vendored Fraidycat stylesheet.
+//
+// `themed()` and `t()` come from the vendored stylesheet imported before this one.
+//
+
+//
+// The replacement emoji picker (see src/emoji.js).
+//
+.emoji-picker {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2px;
+  max-width: 20rem;
+  margin: 0.5em 0;
+  padding: 0.4em;
+  border-radius: 4px;
+
+  @include themed() {
+    background-color: t('paper');
+    border: 1px solid t('border');
+  }
+
+  button {
+    min-width: 40px;
+    min-height: 40px;
+    font-size: 1.2rem;
+    background: none;
+    border: 0;
+    cursor: pointer;
+  }
+}

@@ -1,0 +1,8 @@
+//
+// Stylesheet entry point: the vendored Fraidycat stylesheet, byte-identical to upstream,
+// followed by tarangcat's overrides. Keeping them apart is what lets the vendored file
+// stay unmodified (vendor/fraidycat/VENDORED.md).
+//
+
+@import '../../vendor/fraidycat/css/fraidy';
+@import 'overrides';

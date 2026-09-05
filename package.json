@@ -12,7 +12,8 @@
     "dev": "node build.mjs --watch",
     "serve": "node serve.mjs",
     "test": "node --test test/adapter.test.mjs",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:browser": "playwright test"
   },
   "imports": {
     "#app/*": "./src/*"
@@ -20,12 +21,14 @@
   "dependencies": {
     "@kickscondor/router": "0.7.3",
     "@kickscondor/umbrellajs": "3.1.2",
+    "dompurify": "^3.4.14",
     "ent": "^2.2.2",
     "hyperapp": "1.2.9",
     "json-date-parser": "^1.0.1",
     "normalize-url": "^8.1.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@types/node": "^22.20.0",
     "esbuild": "^0.28.1",
     "sass": "^1.102.0",

@@ -6,4 +6,4 @@ Tarang owns feed, article, and category data in SQLite. Feed and category writes
 
 A feed has one optional category. Importance maps to its refresh interval. An unassigned feed appears on the home tab. The summary contains up to ten articles per feed; the interface has no article pagination.
 
-Activity sparklines require a per-day aggregate endpoint and remain deferred. OPML import/export and article read/starred state are not implemented. The in-app reader is not yet implemented. Tarang already includes article content in its summary response.
+Activity sparklines require a per-day aggregate endpoint and remain deferred. OPML import/export and article read/starred state are not implemented. The [in-app reader](reader.md) displays cached content from the summary response. It sanitizes article HTML with DOMPurify and keeps a copy of the open article until the reader closes. It requires no additional API endpoint.

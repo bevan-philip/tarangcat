@@ -1,6 +1,6 @@
 # Read cached articles
 
-Click an article title in a feed's post list to open the reader. It displays the article content returned by Tarang's summary API. The reader does not fetch or extract the publisher's page. Open original opens the source URL in a new tab.
+Click an article title in a feed's post list to open the reader. It displays the article content returned by Tarang's `/tarang/v1/article/{id}` API. The reader does not fetch or extract the publisher's page. Open original opens the source URL in a new tab.
 
 Middle-click or Ctrl/Cmd-click an article title to open the original URL in a new tab. The link's context-menu actions and Copy link address also use the original URL. An ordinary click or Enter opens the internal reader.
 
@@ -16,7 +16,7 @@ Appearance is shared with the feed list. Font and size apply to the article body
 
 Back to feeds returns to the article's category and importance group. Escape performs the same navigation when focus is outside a select or text input. Browser Back and Forward also work. Article heading and footnote links scroll within the reader without changing its route.
 
-The reader keeps the open article in memory while it is displayed, so periodic summary refreshes cannot remove the text mid-read. Leaving the reader releases that copy. A reloaded or bookmarked reader route (`#!/view/{article-id}`) can only resolve articles in the current summary, which contains the latest ten articles per feed. An absent article displays an unavailable message. Try again refetches the summary, including after an API connection failure.
+The reader keeps the open article in memory while it is displayed, so periodic summary refreshes cannot remove the text mid-read. Leaving the reader releases that copy. A reloaded or bookmarked reader route (`#!/view/{article-id}`) loads the article directly, including articles outside the latest ten previews per feed. Loading displays a progress message. An absent article displays an unavailable message. Try again retries the article request after a failure. Leaving the route prevents a pending request from replacing the next article.
 
 If cached content is empty, the reader displays the summary and labels it as such. If neither is available, it displays a missing-content message and retains the source link when the URL is valid. The reader does not mark articles read or starred.
 

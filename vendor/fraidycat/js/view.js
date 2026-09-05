@@ -3,7 +3,6 @@
 import { followTitle, html2text, getIndexById, house, sortBySettings,
   isValidFollow, Importances, resolveUrl } from './util.js'
 import { h } from 'hyperapp'
-import { jsonDateParser } from "json-date-parser"
 import { Link, Route, Switch } from '@kickscondor/router'
 import EmojiButton from '#app/emoji.js'
 import frago from './frago.js'
@@ -169,16 +168,18 @@ const FollowForm = (match, setup, isNew) => ({follows}, actions) => {
   </form>
 }
 
-const EditFollowById = ({ match, setup }) => ({follows}) => {
-  if (setup)
-    follows.editing = JSON.parse(JSON.stringify(follows.all[match.params.id]), jsonDateParser)
-
-  // MODIFIED (tarangcat): keyed so a route swap destroys/recreates this node instead of
-  // hyperapp reusing it, which let untracked innerHTML from the reader pane leak in.
-  return <div id="edit-feed" key="edit-feed">
+const EditFollowById = ({ match }) => ({follows}, actions) => {
+  const id = match.params.id
+  const editing = follows.editId === id && follows.editing
+  const error = follows.editId === id && follows.editError
+  // MODIFIED (tarangcat): fetch the feed independently of the summary and discard stale loads.
+  return <div id="edit-feed" key={`edit-feed-${id}`}
+    oncreate={() => actions.follows.loadEditing(id)}
+    ondestroy={() => actions.follows.closeEditing(id)}>
     <h2>Edit a Follow</h2>
-    <p>URL: {follows.editing.url}</p>
-    {FollowForm(match, setup, false)}
+    {editing ? <div><p>URL: {editing.url}</p>{FollowForm(match, false, false)}</div>
+      : error ? <div><p role="alert">{error}</p><button onclick={() => actions.follows.loadEditing(id)}>Try again</button></div>
+      : <p role="status">Loading feed…</p>}
   </div>
 }
 

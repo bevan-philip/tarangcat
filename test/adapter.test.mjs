@@ -85,22 +85,22 @@ test('addFollow sends null for an unassigned category', async () => {
   assert.equal(requestBody(request.init).category_id, null)
 })
 
-test('fetchSummary preserves cached content and summaries for the reader', async () => {
+test('fetchSummary converts previews without full content or GUIDs', async () => {
   globalThis.fetch = async () => jsonResponse({ categories: [], feeds: [{
     pk: 42, name: 'Example', url: 'https://example.test/feed', category: null,
     refresh_interval: 300, articles: [{
       pk: 9, url: 'https://example.test/article', title: null,
-      content: '<p>Full cached article</p>', summary: '<p>Summary</p>',
+      is_read: false, is_starred: true, summary: '<p>Summary</p>',
       published_at: null, retrieved_at: 1700000000,
     }, {
       pk: 10, url: 'https://example.test/empty', title: '',
-      content: null, summary: null, published_at: 1700000001, retrieved_at: 1700000002,
+      is_read: true, is_starred: false, summary: null, published_at: 1700000001, retrieved_at: 1700000002,
     }],
   }] })
   const follows = await adapter.fetchSummary()
   const [full, empty] = follows['42'].posts
   assert.equal(follows['42'].fetchesContent, true)
-  assert.equal(full.content, '<p>Full cached article</p>')
+  assert.equal(full.content, '')
   assert.equal(full.summary, '<p>Summary</p>')
   assert.equal(full.title, '(untitled)')
   assert.equal(full.publishedAt.getTime(), 1700000000000)
@@ -154,4 +154,46 @@ test('editFollow clears a category with null', async () => {
   await adapter.editFollow('42', { importance: 0 })
   assert.equal(request.url, '/tarang/v1/feed/42')
   assert.equal(requestBody(request.init).category_id, null)
+})
+
+test('fetchArticle loads full content directly with the feed id', async () => {
+  const requests = []
+  globalThis.fetch = async url => {
+    requests.push(url)
+    return jsonResponse({ pk: 9, feed: 42, title: 'Older article', url: 'https://example.test/9',
+      guid: 'nine', content: '<p>Full content</p>', summary: null, published_at: null, retrieved_at: 1700000000,
+      is_read: false, is_starred: true })
+  }
+  const result = await adapter.fetchArticle('9')
+  assert.deepEqual(requests, ['/tarang/v1/article/9'])
+  assert.equal(result.feedId, '42')
+  assert.equal(result.post.content, '<p>Full content</p>')
+  assert.equal(result.post.publishedAt.getTime(), 1700000000000)
+})
+
+test('fetchFollow uses feed metadata and category lookup without the summary', async () => {
+  const requests = []
+  globalThis.fetch = async url => {
+    requests.push(url)
+    return jsonResponse(url.endsWith('/category') ? [{ pk: 7, name: 'News' }] : {
+      id: 42, feed: { pk: 42, name: 'Fresh name', url: 'https://example.test/feed', category_id: 7,
+        refresh_interval: 21600 }, articles: [{ pk: 9 }] })
+  }
+  const follow = await adapter.fetchFollow('42')
+  assert.deepEqual(requests, ['/tarang/v1/feed/42', '/tarang/v1/category'])
+  assert.equal(follow.title, 'Fresh name')
+  assert.equal(follow.category, 'News')
+  assert.equal(follow.importance, 7)
+  assert.deepEqual(follow.posts, [])
+})
+
+test('fetchFollow skips category requests for unassigned feeds', async () => {
+  const requests = []
+  globalThis.fetch = async url => {
+    requests.push(url)
+    return jsonResponse({ id: 42, feed: { pk: 42, name: 'Example', url: 'https://example.test/feed',
+      category_id: null, refresh_interval: 300 }, articles: [] })
+  }
+  assert.equal((await adapter.fetchFollow('42')).category, undefined)
+  assert.deepEqual(requests, ['/tarang/v1/feed/42'])
 })

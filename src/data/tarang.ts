@@ -1,7 +1,7 @@
 // Tarang API adapter. Summary refetches read the current SQLite state after writes.
 // Authentication is supplied by the deployment boundary.
 
-import type { Follow, Post, WireCategory, WireFeed, WireSummary } from './types'
+import type { Follow, Post, WireArticle, WireCategory, WireFeed, WireFeedDetail, WireSummary } from './types'
 
 /** Set at build time (build.mjs); '' means same-origin. */
 declare const __TARANG_API_BASE__: string
@@ -84,7 +84,7 @@ function toPost(article: WireFeed['articles'][number]): Post {
     id: String(article.pk),
     title: article.title || '(untitled)',
     url: article.url,
-    content: article.content ?? '',
+    content: '',
     summary: article.summary ?? null,
     publishedAt,
     // Tarang does not track a separate "updated" time; the view reads this field by
@@ -116,6 +116,18 @@ export async function fetchSummary(): Promise<Record<string, Follow>> {
   const follows: Record<string, Follow> = {}
   for (const feed of wire.feeds) follows[String(feed.pk)] = toFollow(feed)
   return follows
+}
+
+export async function fetchArticle(id: string): Promise<{ post: Post, feedId: string }> {
+  const article = await apiJson<WireArticle>(`/tarang/v1/article/${encodeURIComponent(id)}`)
+  return { post: { ...toPost(article), content: article.content ?? '' }, feedId: String(article.feed) }
+}
+
+export async function fetchFollow(id: string): Promise<Follow> {
+  const { feed } = await apiJson<WireFeedDetail>(`/tarang/v1/feed/${encodeURIComponent(id)}`)
+  const category = feed.category_id == null ? null
+    : (await listCategories()).find(category => category.pk === feed.category_id) ?? null
+  return toFollow({ ...feed, category, articles: [] })
 }
 
 async function listCategories(): Promise<WireCategory[]> {

@@ -2,6 +2,8 @@
 
 Click an article title in a feed's post list to open the reader. It displays the article content returned by Tarang's summary API. The reader does not fetch or extract the publisher's page. Open original opens the source URL in a new tab.
 
+Middle-click or Ctrl/Cmd-click an article title to open the original URL in a new tab. The link's context-menu actions and Copy link address also use the original URL. An ordinary click or Enter opens the internal reader.
+
 The toolbar provides these device-local preferences:
 
 | Control | Choices | Default |

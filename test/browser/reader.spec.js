@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { writeFile } from 'node:fs/promises'
 
 const content = `<section><p>A quiet place to read the articles already saved by Tarang.</p>
   <h2 id="landscape">Across the landscape</h2>
@@ -64,6 +65,32 @@ test('opens cached content, preserves formatting, and returns to the same catego
   await page.goBack()
   await expect(page.locator('#follows')).toBeVisible()
   expect(errors).toEqual([])
+})
+
+test('middle-click and modifier-click open the original while Enter opens the reader', async ({ page, context }, testInfo) => {
+  // Serve the original from another origin so native tab navigation needs no popup interception.
+  const source = new URL('/original-article.html', testInfo.project.use.baseURL)
+  source.hostname = 'localhost'
+  const originalUrl = source.href
+  await writeFile('dist/original-article.html', '<h1>Original article</h1>')
+  await mockApi(page, () => summary([article(1, { url: originalUrl })]))
+  await page.goto('/#!/tag/Outdoors?importance=1')
+  const link = page.getByRole('link', { name: 'Article 1', exact: true })
+  await expect(link).toHaveAttribute('href', originalUrl)
+  for (const options of [{ button: 'middle' }, { modifiers: ['ControlOrMeta'] }]) {
+    const opened = context.waitForEvent('page')
+    await link.click(options)
+    const original = await opened
+    await expect(original).toHaveURL(originalUrl)
+    await expect(original.getByRole('heading', { name: 'Original article' })).toBeVisible()
+    await expect(page).toHaveURL(/#!\/tag\/Outdoors\?importance=1$/)
+    await expect(page.locator('.reader-content')).toHaveCount(0)
+    await original.close()
+  }
+  await link.focus()
+  await page.keyboard.press('Enter')
+  await expect(page).toHaveURL(/#!\/view\/1$/)
+  await expect(page.getByRole('heading', { name: 'Article 1', exact: true })).toBeVisible()
 })
 
 test('loads every font from local assets and persists reading preferences', async ({ page }) => {

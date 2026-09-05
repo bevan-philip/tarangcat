@@ -11,6 +11,7 @@ import sparkline from './sparkline.js'
 import u from '@kickscondor/umbrellajs'
 import { images, svg, webp } from '#app/assets.js'
 import { ReaderPane } from '#app/reader/pane.js'
+import { safeUrl } from '#app/reader/content.js'
 
 const CAN_ARCHIVE = false
 const IS_WEBEXT = false
@@ -441,9 +442,14 @@ const ListFollow = ({ location, match }) => ({follows}, actions) => {
                       {f.author && f.author !== follow.author && <span class="author">{f.author}</span>}
                       {f.url.startsWith('id:') ? <span class="txt">{TitleTrunc(f.title)}</span> :
                         (follow.fetchesContent && f.id ?
-                          /* MODIFIED (tarangcat): posts of a 'read here' follow open the in-app
-                             reader instead of leaving for the site. */
-                          <Link to={`/view/${f.id}`}>{TitleTrunc(f.title)}</Link> :
+                          /* MODIFIED (tarangcat): ordinary activation opens the reader;
+                             native new-tab and copy-link actions use the original URL. */
+                          <a href={safeUrl(f.url) || `#!/view/${f.id}`} rel="noopener noreferrer"
+                            onclick={e => {
+                              if (e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return
+                              e.preventDefault()
+                              actions.location.go(`/view/${f.id}`)
+                            }}>{TitleTrunc(f.title)}</a> :
                           <a href={f.url} target={target}>{TitleTrunc(f.title)}</a>)}
                       {!f.index && <span class="ago">{timeAgo(f[sortPosts], now)}</span>}
                     </li>

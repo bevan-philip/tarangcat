@@ -1,6 +1,6 @@
 # Architecture
 
-Tarangcat runs as static browser code. The Hyperapp view is vendored from Fraidycat v1.1. The adapter in `src/data/tarang.ts` maps Tarang's summary response into the view's follow and post objects. The [state reference](state-shape.md) defines that contract.
+Tarangcat runs as static browser code. The Hyperapp view is vendored from Fraidycat v1.1. The adapter in `src/data/tarang.ts` maps Tarang's summary response into the view's follow and post objects.
 
 Tarang owns feed, article, and category data in SQLite. Feed and category writes go directly to the API, followed by a summary refetch. The browser keeps the current summary in memory and display preferences in localStorage. Tarang's scheduler fetches feeds independently of the browser. Client refreshes retrieve the current summary every minute and on focus or visibility changes.
 

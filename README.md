@@ -7,7 +7,6 @@ Tarangcat is a web RSS client that uses Fraidycat's interface and Tarang's API. 
 - [Tutorial: run locally](docs/tutorial.md)
 - [How-to: deploy](docs/deployment.md)
 - [Reference: configuration and commands](docs/configuration.md)
-- [Reference: view state and API mapping](docs/state-shape.md)
 - [Explanation: architecture](docs/architecture.md)
 - [Reference: vendored Fraidycat files](vendor/fraidycat/VENDORED.md)
 

@@ -84,6 +84,8 @@ function toPost(article: WireFeed['articles'][number]): Post {
     id: String(article.pk),
     title: article.title || '(untitled)',
     url: article.url,
+    content: article.content ?? '',
+    summary: article.summary ?? null,
     publishedAt,
     // Tarang does not track a separate "updated" time; the view reads this field by
     // name when settings['mode-updates'] is set, so it has to exist.
@@ -98,7 +100,7 @@ function toFollow(feed: WireFeed): Follow {
     feed: feed.url,
     title: feed.name,
     importance: importanceForInterval(feed.refresh_interval),
-    fetchesContent: false,
+    fetchesContent: true,
     posts: feed.articles.map(toPost),
     // Deferred: sparkpoints() treats a missing/empty array as
     // "nothing to draw" and renders no sparkline.

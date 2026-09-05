@@ -72,6 +72,7 @@ async function copyImages() {
 // up from /assets/.
 async function copyFonts() {
   await cp(join(vendor, 'fonts'), join(outDir, 'fonts'), { recursive: true })
+  await cp(join(here, 'vendor', 'reader-fonts'), join(outDir, 'fonts', 'reader'), { recursive: true })
 }
 
 async function buildStyles() {

@@ -1,7 +1,7 @@
 //
 // The client's view of Tarang's wire format, and of the shape the vendored view expects.
 //
-// docs/state-shape.md documents the mapping in full. Tarang's timestamps are Unix seconds
+// Tarang's timestamps are Unix seconds
 // (SQLite's unixepoch()); the vendored view compares Date objects with `>` and divides by
 // 1000, so every timestamp is converted to a Date before the view sees it.
 //
@@ -42,7 +42,7 @@ export interface WireSummary {
   feeds: WireFeed[]
 }
 
-/** What the vendored view actually consumes: see docs/state-shape.md, "Follow". */
+/** Post fields consumed by the vendored view. */
 export interface Post {
   id: string
   title: string

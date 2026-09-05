@@ -47,7 +47,7 @@ function jsonBody(method: string, body: unknown): RequestInit {
 //
 // Importance <-> refresh_interval. Fraidycat's five tiers map onto Tarang's per-feed
 // refresh_interval (seconds); there is no schema change on the backend for this, it is
-// purely an adapter-side convention. See docs/state-shape.md.
+// purely an adapter-side convention.
 //
 const IMPORTANCE_TO_INTERVAL: Record<number, number> = {
   0: 300,
@@ -102,7 +102,7 @@ function toFollow(feed: WireFeed): Follow {
     importance: importanceForInterval(feed.refresh_interval),
     fetchesContent: true,
     posts: feed.articles.map(toPost),
-    // Deferred (docs/state-shape.md): sparkpoints() treats a missing/empty array as
+    // Deferred: sparkpoints() treats a missing/empty array as
     // "nothing to draw" and renders no sparkline.
     activity: []
   }

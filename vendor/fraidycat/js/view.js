@@ -116,7 +116,7 @@ const FollowForm = (match, setup, isNew) => ({follows}, actions) => {
         <label for="url">URL</label>
         <input type="text" id="url" name="url" value={follow.url} autocorrect="off" autocapitalize="none"
           oninput={e => follow.url = e.target.value} autofocus />
-        {/* MODIFIED (tarangcat): the feed URL, not a site URL — see docs/state-shape.md. */}
+        {/* MODIFIED (tarangcat): the form accepts a feed URL. */}
         <p class="note">(The feed's own URL, not the site's homepage. For sites with no
           feed, see <a href="https://rss.app/">RSS.app</a> or <a href="https://rsshub.app/">RSSHub</a>.)</p>
       </div>}
@@ -488,7 +488,7 @@ const ListFollow = ({ location, match }) => ({follows}, actions) => {
 // import buttons (Miniflux imports OPML).
 
 // MODIFIED (tarangcat): the whole Import/Export section is gone — OPML import/export and
-// the Miniflux settings backup/restore are out of scope for this MVP (docs/state-shape.md).
+// the Miniflux settings backup/restore are out of scope for this MVP.
 // Settings is now just credits, keyed so a route swap destroys/recreates this node instead
 // of hyperapp reusing it (the same reuse hazard upstream's reader-pane fix addressed).
 const ChangeSettings = ({ match, setup }) => (state, {follows}) => {

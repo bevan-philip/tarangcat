@@ -2,10 +2,9 @@
 // The `follows` hyperapp module. Holds the current app state in memory and applies
 // edits straight through to Tarang — no local sidecar, no CAS, no snapshot rebuild lag
 // to reconcile: `GET /tarang/v1/summary` is synchronous against SQLite, so a refetch after a
-// write always sees the write. See docs/state-shape.md.
+// write always sees the write.
 //
-// The action names and state keys are dictated by the vendored view — see
-// docs/state-shape.md, "Actions the view calls".
+// The action names and state keys are dictated by the vendored view.
 //
 
 import { addFollow, ApiError, editFollow, fetchSummary, removeFollow } from '../data/tarang'

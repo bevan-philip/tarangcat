@@ -18,7 +18,7 @@ The upstream `master` branch contains an incomplete Fraidycat 2 rewrite. Use the
 | Local path | Upstream path | Local changes |
 |---|---|---|
 | `LICENSE.md` | `LICENSE.md` | None. |
-| `js/view.js` | `src/js/view.js` | ESM imports, app asset maps, local emoji picker, keyed route roots, Tarang forms and settings. |
+| `js/view.js` | `src/js/view.js` | ESM imports, app asset maps, local emoji picker, keyed route roots, Tarang forms and settings, direct feed loading for edit routes. |
 | `js/util.js` | `src/js/util.js` | ESM imports and browser URL resolution. |
 | `js/sparkline.js` | `src/js/sparkline.js` | ESM export and comment wording. |
 | `js/compare.js` | `src/js/compare.js` | ESM export; currently unused. |
@@ -29,7 +29,7 @@ The upstream `master` branch contains an incomplete Fraidycat 2 rewrite. Use the
 
 Storage, browser-extension, Electron, Dat, background, popup, manifest, social definitions, and scraping modules are excluded. The build uses esbuild and Dart Sass in place of Parcel and node-sass.
 
-The view accepts one optional category per feed. Add Follow requires a feed URL because Tarang does not discover feeds from a homepage. The settings route contains credits; unsupported import/export controls are removed. The `/view/:id` route renders the app reader outside the Fraidycat page layout. `CAN_ARCHIVE` remains false, hiding the per-feed content checkbox. Tarang already returns article content but has no per-feed crawler setting. Keyed route roots force lifecycle hooks to run when routes change. Post links open the reader for follows with `fetchesContent`, which the adapter sets to true. Reader fonts are separately vendored under `vendor/reader-fonts/`.
+The view accepts one optional category per feed. Add Follow requires a feed URL because Tarang does not discover feeds from a homepage. The settings route contains credits; unsupported import/export controls are removed. The `/view/:id` route renders the app reader outside the Fraidycat page layout. `CAN_ARCHIVE` remains false, hiding the per-feed content checkbox. Tarang provides article content through its article endpoint but has no per-feed crawler setting. Keyed route roots force lifecycle hooks to run when routes change. Post links open the reader for follows with `fetchesContent`, which the adapter sets to true. Reader fonts are separately vendored under `vendor/reader-fonts/`.
 
 App-specific style changes belong in `src/styles/overrides.scss`, which compiles after the upstream stylesheet.
 

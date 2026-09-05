@@ -32,30 +32,21 @@ export function ReaderControls({ settings, actions }) {
 
 export const ReaderPane = ({ match }) => ({ follows }, actions) => {
   const id = match.params.id
-  let selected = follows.reader?.post.id === id ? follows.reader : null
-  if (!selected) {
-    for (const follow of Object.values(follows.all)) {
-      const post = follow.posts.find(post => post.id === id)
-      if (post) {
-        selected = { post: { ...post }, title: follow.title,
-          back: `/tag/${encodeURIComponent(follow.category || '\u{1f3e0}')}?importance=${follow.importance}` }
-        break
-      }
-    }
-  }
+  const reader = follows.reader?.id === id ? follows.reader : null
+  const selected = reader?.post ? reader : null
   const font = fonts.some(([key]) => key === follows.settings['reader-font']) ? follows.settings['reader-font'] : 'serif'
   const size = ['small', 'medium', 'large'].includes(follows.settings['reader-size']) ? follows.settings['reader-size'] : 'medium'
   const back = selected?.back || '/'
   const focusTitle = element => {
-    if (selected) actions.follows.set({ reader: selected })
     window.scrollTo(0, 0)
     element.querySelector('h1')?.focus({ preventScroll: true })
   }
   return <main class={`reader-shell reader-font-${font} reader-size-${size}`} key={`reader-${id}`}
-    oncreate={focusTitle}
-    onupdate={element => {
-      if (selected && follows.reader !== selected) focusTitle(element)
+    oncreate={element => { focusTitle(element); actions.follows.openReader(id) }}
+    onupdate={(element, old) => {
+      if (selected && old['data-loaded'] !== id) focusTitle(element)
     }}
+    data-loaded={selected ? id : ''}
     ondestroy={() => actions.follows.closeReader(id)}
     onkeydown={event => {
       if (event.key === 'Escape' && !['INPUT', 'SELECT', 'TEXTAREA'].includes(event.target.tagName)) actions.location.go(back)
@@ -77,9 +68,9 @@ export const ReaderPane = ({ match }) => ({ follows }, actions) => {
       </header>
       <div class="reader-content" oncreate={el => renderArticle(el, selected.post)} onupdate={el => renderArticle(el, selected.post)} />
     </div> : <div class="reader-page">
-      <h1 tabindex="-1">Article unavailable</h1>
-      <p>{follows.refreshError || 'This article is not in the current cache. It may have aged out of the latest ten articles or its feed may have been removed.'}</p>
-      <button type="button" onclick={() => actions.follows.refresh()}>Try again</button>
+      <h1 tabindex="-1">{reader?.error ? 'Article unavailable' : 'Loading article…'}</h1>
+      <p role="status">{reader?.error || 'Fetching cached content from Tarang.'}</p>
+      {reader?.error && <button type="button" onclick={() => actions.follows.openReader(id)}>Try again</button>}
     </div>}
   </main>
 }

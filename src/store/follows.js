@@ -7,7 +7,7 @@
 // The action names and state keys are dictated by the vendored view.
 //
 
-import { addFollow, ApiError, editFollow, fetchSummary, removeFollow } from '../data/tarang'
+import { addFollow, ApiError, editFollow, fetchArticle, fetchFollow, fetchSummary, removeFollow } from '../data/tarang'
 import { loadSettings, saveSettings } from './settings.js'
 
 const HOUSE = '\u{1f3e0}'
@@ -29,6 +29,8 @@ function unfreezeForm() {
 // was written while it was in flight.
 let generation = 0
 let refreshTimer = null
+let readerGeneration = 0
+let editGeneration = 0
 
 export default {
   state: {
@@ -37,6 +39,8 @@ export default {
     started: false,
     baseHref: '',
     editing: null,
+    editId: null,
+    editError: null,
     feeds: null,
     updating: {},
     urgent: null,
@@ -51,10 +55,10 @@ export default {
       actions.set({ started: true })
 
       // Tarang's own scheduler fetches feeds server-side, independent of the client, so
-      // staying fresh here just means refetching the one cheap synchronous endpoint —
-      // no client-side poll scheduling, no cache-merge logic.
+      // refresh the summary while a feed list is visible.
       if (typeof window !== 'undefined') {
         refreshTimer = window.setInterval(() => actions.refresh(), 60_000)
+        window.addEventListener('hashchange', () => actions.refresh())
         window.addEventListener('focus', () => actions.refresh())
         document.addEventListener('visibilitychange', () => {
           if (document.visibilityState === 'visible') actions.refresh()
@@ -64,6 +68,7 @@ export default {
 
     refresh: () => async (_state, actions) => {
       const gen = ++generation
+      if (/^#!\/(edit|view|add|settings)(\/|\?|$)/.test(window.location.hash)) return
       try {
         const all = await fetchSummary()
         if (gen !== generation) return // superseded while this was in flight
@@ -90,7 +95,48 @@ export default {
       actions.set({ settings })
     },
 
-    closeReader: id => state => state.reader?.post.id === id ? { reader: null } : {},
+    openReader: id => async (state, actions) => {
+      const gen = ++readerGeneration
+      actions.set({ reader: { id, loading: true } })
+      try {
+        const { post, feedId } = await fetchArticle(id)
+        let follow = state.all[feedId]
+        if (!follow) {
+          try { follow = await fetchFollow(feedId) } catch { /* Content remains readable without feed metadata. */ }
+        }
+        if (gen !== readerGeneration) return
+        actions.set({ reader: { id, post, title: follow?.title || '', back: follow ? tagPath(follow) : '/' } })
+      } catch (error) {
+        if (gen !== readerGeneration) return
+        actions.set({ reader: { id, error: error instanceof ApiError && error.status === 404
+          ? 'This article is no longer available in Tarang.'
+          : 'The article could not be loaded. Check the connection to Tarang and try again.' } })
+      }
+    },
+
+    closeReader: id => state => {
+      if (state.reader?.id !== id) return {}
+      ++readerGeneration
+      return { reader: null }
+    },
+
+    loadEditing: id => async (_state, actions) => {
+      const gen = ++editGeneration
+      actions.set({ editId: id, editing: null, editError: null })
+      try {
+        const editing = await fetchFollow(id)
+        if (gen === editGeneration) actions.set({ editing })
+      } catch (error) {
+        if (gen === editGeneration) actions.set({ editError: error instanceof ApiError && error.status === 404
+          ? 'This feed is no longer available in Tarang.' : 'The feed could not be loaded. Try again.' })
+      }
+    },
+
+    closeEditing: id => state => {
+      if (state.editId !== id) return {}
+      ++editGeneration
+      return { editId: null, editing: null, editError: null }
+    },
 
     //
     // Save a follow, after add or edit.
@@ -100,13 +146,11 @@ export default {
         try {
           if (!follow.id) {
             const id = await addFollow(follow)
-            await actions.refresh()
             actions.location.go(tagPath({ ...follow, id }))
             return
           }
 
           await editFollow(follow.id, follow)
-          await actions.refresh()
           actions.location.go(tagPath(follow))
         } catch (error) {
           actions.reportError(error)

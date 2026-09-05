@@ -30,8 +30,22 @@ async function mockApi(page, getSummary = () => summary([article(1), article(2)]
   })
   await page.route('**/tarang/v1/summary', async route => {
     const result = getSummary()
-    await route.fulfill(result === null ? { status: 503, body: 'Unavailable' } : { json: result })
+    const preview = result && { ...result, feeds: result.feeds.map(feed => ({ ...feed,
+      articles: feed.articles.map(({ content, guid, ...article }) => ({ ...article, is_read: false, is_starred: false })) })) }
+    await route.fulfill(preview === null ? { status: 503, body: 'Unavailable' } : { json: preview })
   })
+  await page.route('**/tarang/v1/article/*', async route => {
+    const result = getSummary()
+    const id = Number(route.request().url().split('/').pop())
+    const post = result?.feeds.flatMap(feed => feed.articles).find(post => post.pk === id)
+    await route.fulfill(result === null ? { status: 503 } : post ? { json: post } : { status: 404 })
+  })
+  await page.route('**/tarang/v1/feed/*', async route => {
+    const result = getSummary()
+    const feed = result?.feeds.find(feed => feed.pk === Number(route.request().url().split('/').pop()))
+    await route.fulfill(feed ? { json: { id: feed.pk, feed, articles: [] } } : { status: 404 })
+  })
+  await page.route('**/tarang/v1/category', route => route.fulfill({ json: getSummary()?.categories || [] }))
   return requests
 }
 
@@ -170,14 +184,12 @@ test('keeps the open article stable across refresh and recovers from initial API
   let current = null
   await mockApi(page, () => current)
   await page.goto('/#!/view/1')
-  await expect(page.getByText('Articles could not be refreshed.', { exact: false })).toBeVisible()
+  await expect(page.getByText('The article could not be loaded.', { exact: false })).toBeVisible()
   current = summary([article(1)])
   await page.getByRole('button', { name: 'Try again' }).click()
   await expect(page.getByRole('heading', { name: 'Article 1', exact: true })).toBeVisible()
   current = summary([])
-  const refreshed = page.waitForResponse('**/tarang/v1/summary')
   await page.evaluate(() => window.dispatchEvent(new Event('focus')))
-  await refreshed
   await expect(page.getByRole('heading', { name: 'Article 1', exact: true })).toBeVisible()
   await page.getByRole('link', { name: 'Back to feeds', exact: false }).click()
   await expect(page.locator('#follows')).toBeVisible()
@@ -212,3 +224,99 @@ for (const width of [320, 390, 1280]) {
     await page.screenshot({ path: testInfo.outputPath(`reader-${width}.png`), fullPage: true })
   })
 }
+
+test('edit bookmark loads and saves feed metadata without requesting a summary until leaving', async ({ page }) => {
+  const requests = []
+  page.on('request', req => { if (req.url().includes('/tarang/v1/')) requests.push(req.url().split('/tarang/v1/')[1]) })
+  await mockApi(page)
+  let saved
+  await page.route('**/tarang/v1/feed/42', async route => {
+    if (route.request().method() === 'PATCH') {
+      saved = route.request().postDataJSON()
+      return route.fulfill({ json: {} })
+    }
+    return route.fulfill({ json: { id: 42, feed: { pk: 42, name: 'Fresh title',
+      url: 'https://example.test/feed', category_id: null, refresh_interval: 3600 }, articles: [] } })
+  })
+  await page.goto('/#!/edit/42')
+  await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Fresh title')
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+  await page.getByLabel('Title', { exact: true }).fill('Changed title')
+  expect(requests).toEqual(['feed/42'])
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect(page.locator('#follows')).toBeVisible()
+  await expect.poll(() => requests.includes('summary')).toBe(true)
+  expect(saved.name).toBe('Changed title')
+})
+
+test('reader bookmark resolves an older article without a summary request', async ({ page }) => {
+  const requests = []
+  page.on('request', req => { if (req.url().includes('/tarang/v1/')) requests.push(req.url().split('/tarang/v1/')[1]) })
+  await mockApi(page, () => summary([]))
+  await page.route('**/tarang/v1/article/99', route => route.fulfill({ json: article(99) }))
+  await page.goto('/#!/view/99')
+  await expect(page.getByRole('heading', { name: 'Article 99', exact: true })).toBeVisible()
+  await expect(page.locator('.reader-content strong')).toHaveText('emphasis')
+  expect(requests).toEqual(['article/99', 'feed/42', 'category'])
+})
+
+test('edit load failures can be retried', async ({ page }) => {
+  await mockApi(page)
+  let status = 503
+  await page.route('**/tarang/v1/feed/42', route => route.fulfill({ status }))
+  await page.goto('/#!/edit/42')
+  await expect(page.getByRole('alert')).toHaveText('The feed could not be loaded. Try again.')
+  status = 404
+  await page.getByRole('button', { name: 'Try again' }).click()
+  await expect(page.getByRole('alert')).toHaveText('This feed is no longer available in Tarang.')
+  await page.unroute('**/tarang/v1/feed/42')
+  await page.getByRole('button', { name: 'Try again' }).click()
+  await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Field notes')
+})
+
+test('late article responses cannot replace the current reader', async ({ page }) => {
+  await mockApi(page)
+  let release
+  const held = new Promise(resolve => { release = resolve })
+  let requested
+  const started = new Promise(resolve => { requested = resolve })
+  await page.route('**/tarang/v1/article/1', async route => {
+    requested()
+    await held
+    await route.fulfill({ json: article(1) })
+  })
+  await page.goto('/#!/view/1')
+  await started
+  await expect(page.getByRole('heading', { name: 'Loading article…' })).toBeVisible()
+  await page.evaluate(() => { window.location.hash = '!/view/2' })
+  await expect(page.getByRole('heading', { name: 'Article 2', exact: true })).toBeVisible()
+  const completed = page.waitForResponse('**/tarang/v1/article/1')
+  release()
+  await completed
+  await page.getByLabel('Reader text size').selectOption('large')
+  await expect(page.getByRole('heading', { name: 'Article 2', exact: true })).toBeVisible()
+})
+
+test('late feed responses cannot replace a newly opened edit form', async ({ page }) => {
+  await mockApi(page)
+  let release
+  const held = new Promise(resolve => { release = resolve })
+  let requested
+  const started = new Promise(resolve => { requested = resolve })
+  await page.route('**/tarang/v1/feed/41', async route => {
+    requested()
+    await held
+    await route.fulfill({ json: { id: 41, feed: { pk: 41, name: 'Old feed',
+      url: 'https://example.test/old', category_id: null, refresh_interval: 300 }, articles: [] } })
+  })
+  await page.goto('/#!/edit/41')
+  await started
+  await page.evaluate(() => { window.location.hash = '!/edit/42' })
+  await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Field notes')
+  await page.getByLabel('Title', { exact: true }).fill('Unsaved change')
+  const completed = page.waitForResponse('**/tarang/v1/feed/41')
+  release()
+  await completed
+  await page.getByLabel('Category', { exact: true }).fill('New category')
+  await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Unsaved change')
+})

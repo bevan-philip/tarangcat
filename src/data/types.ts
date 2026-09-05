@@ -11,16 +11,21 @@ export interface WireCategory {
   name: string
 }
 
-export interface WireArticle {
+export interface WireArticlePreview {
   pk: number
   feed: number
   url: string
-  guid: string
   title: string | null
-  content: string
   summary: string | null
   published_at: number | null
   retrieved_at: number
+  is_read: boolean
+  is_starred: boolean
+}
+
+export interface WireArticle extends WireArticlePreview {
+  guid: string
+  content: string
 }
 
 export interface WireFeed {
@@ -34,7 +39,13 @@ export interface WireFeed {
   category_id: number | null
   /** A feed has at most one category; unassigned feeds carry null. */
   category: WireCategory | null
-  articles: WireArticle[]
+  articles: WireArticlePreview[]
+}
+
+export interface WireFeedDetail {
+  id: number
+  feed: Omit<WireFeed, 'category' | 'articles'>
+  articles: WireArticlePreview[]
 }
 
 export interface WireSummary {

@@ -10,6 +10,7 @@ import frago from './frago.js'
 import sparkline from './sparkline.js'
 import u from '@kickscondor/umbrellajs'
 import { images, svg, webp } from '#app/assets.js'
+import { ReaderPane } from '#app/reader/pane.js'
 
 const CAN_ARCHIVE = false
 const IS_WEBEXT = false
@@ -536,6 +537,11 @@ export default (state, actions) => {
   }
 
   // console.log(state.follows.all)
+  if (state.location.pathname.startsWith('/view/')) {
+    return <div class={`theme--${state.follows.settings['mode-theme'] || 'auto'} reader-mode`}>
+      <Route path="/view/:id" render={ReaderPane} />
+    </div>
+  }
   return <div class={`theme--${state.follows.settings['mode-theme'] || "auto"}`}>
     <article>
       <header>

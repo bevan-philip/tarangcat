@@ -16,6 +16,8 @@ Hyperapp state contains the `follows` module from `src/store/follows.js` and rou
 | `feeds` | Null; the multi-feed discovery picker is unused. |
 | `updating` | Empty object; Tarang performs feed fetching. |
 | `urgent` | Null; no upstream update prompt. |
+| `reader` | Open article copy, feed title, and return route; null outside the reader. |
+| `refreshError` | Latest summary failure message, or null after a successful refresh. |
 
 ## Settings
 
@@ -27,7 +29,9 @@ All settings are optional and stored under `tarangcat.settings` in localStorage.
 | `mode-updates` | Unset, `updatedAt` | Chooses the post date; both dates are equal in this adapter. |
 | `mode-reposts` | Unset, `hide` | No effect because posts have no author field. |
 | `mode-expand` | Unset, `all` | Expands every follow or truncates post lists. |
-| `mode-theme` | Unset, `dark`, `light` | Automatic, dark, or light theme. |
+| `mode-theme` | Unset, `auto`, `dark`, `light` | Automatic, dark, or light theme. |
+| `reader-font` | `serif`, `sans`, `mono` | IBM Plex Serif (default), Inter, or iA Writer Duospace. |
+| `reader-size` | `small`, `medium`, `large` | 17px, 20px (default), or 24px article text. |
 | `mode-tab` | Unset, `_blank` | Link target; the control is hidden because `IS_WEBEXT` is false. |
 
 ## Follow
@@ -39,7 +43,7 @@ All settings are optional and stored under `tarangcat.settings` in localStorage.
 | `title` | `feed.name`. |
 | `category` | `feed.category.name`; omitted when category is null. |
 | `importance` | Nearest refresh-interval tier. |
-| `fetchesContent` | False; reader mode is not yet implemented. |
+| `fetchesContent` | True; article titles open the cached reader. |
 | `posts` | `feed.articles` mapped to Post objects; at most ten in the summary. |
 | `activity` | Empty array; the view skips the sparkline. |
 
@@ -54,6 +58,8 @@ All settings are optional and stored under `tarangcat.settings` in localStorage.
 | `url` | `article.url`. |
 | `publishedAt` | `new Date((published_at ?? retrieved_at) * 1000)`. |
 | `updatedAt` | Same Date as `publishedAt`. |
+| `content` | Cached article HTML; empty string when unavailable. |
+| `summary` | Cached summary HTML, or null. |
 
 Tarang timestamps use Unix seconds. The view requires Date objects for sorting and time display. Streaming status badges are not emitted because Tarang parses feeds without the upstream scraping layer.
 
@@ -73,6 +79,6 @@ The adapter displays the nearest tier for intervals set by another client. Taran
 
 ## Unused view paths
 
-The multi-feed discovery picker, `/add-feed` route, and `actions.follows.subscribe` are not reached because Tarang accepts an exact feed URL. `state.follows.feeds` remains null. `CAN_ARCHIVE` is false and the reader route is removed because there is no per-feed content-fetch setting wired to the view.
+The multi-feed discovery picker, `/add-feed` route, and `actions.follows.subscribe` are not reached because Tarang accepts an exact feed URL. `state.follows.feeds` remains null. `CAN_ARCHIVE` remains false because there is no per-feed content-fetch setting. The reader route `/view/:id` displays content already present in the summary; it does not request content extraction.
 
 Activity sparklines require a per-day aggregate endpoint. A paginated article endpoint would not supply that aggregate. OPML import/export and article read/starred state are not implemented.

@@ -13,6 +13,7 @@
 | `pnpm serve` | Serves `dist/` on port 8080. |
 | `node serve.mjs 9000` | Serves `dist/` on a custom port. |
 | `pnpm test` | Runs the adapter tests. |
+| `pnpm test:browser` | Builds and runs the [reader browser checks](reader.md#browser-checks). |
 | `pnpm typecheck` | Checks TypeScript without emitting files. |
 
 The build uses esbuild and Dart Sass. Output consists of `index.html`, content-hashed JavaScript and CSS under `assets/`, and copied `images/` and `fonts/`. The build targets Safari 15, Chrome 100, and Firefox 100 or later.

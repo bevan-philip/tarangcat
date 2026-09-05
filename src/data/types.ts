@@ -49,6 +49,8 @@ export interface Post {
   url: string
   publishedAt: Date
   updatedAt: Date
+  content: string
+  summary: string | null
 }
 
 export interface Follow {
@@ -59,7 +61,7 @@ export interface Follow {
   /** Absent means the follow appears under Fraidycat's home category. */
   category?: string
   importance: number
-  fetchesContent: false
+  fetchesContent: boolean
   posts: Post[]
   activity: number[]
 }

@@ -3,7 +3,7 @@
 // Library used throughout Fraidycat for fragmenting objects (used to
 // circumvent web extension file size quotas).
 //
-// MODIFIED (boocat): `module.exports` became an ESM default export.
+// MODIFIED (tarangcat): `module.exports` became an ESM default export.
 export default {
   //
   // Compare two 'post' objects

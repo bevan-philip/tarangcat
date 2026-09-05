@@ -115,5 +115,5 @@ var compareObjects = function (a, b) {
     return compare(a, b);
 };
 
-// MODIFIED (boocat): `module.exports` became an ESM default export.
+// MODIFIED (tarangcat): `module.exports` became an ESM default export.
 export default compareObjects

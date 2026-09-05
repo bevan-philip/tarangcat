@@ -1,11 +1,5 @@
-//
-// Talking to Tarang. Replaces boocat's whole data/api.ts + data/snapshot.ts +
-// data/follows.ts trio: there is no bearer token (Tarang has no auth — CORS is
-// permissive and the network boundary is the actual security boundary, same posture
-// Tarang's backend already takes), no follows.json CAS sidecar, and no snapshot rebuild
-// lag to paper over. `GET /tarang/v1/summary` is synchronous against SQLite, so a write
-// followed by a refetch always sees the write.
-//
+// Tarang API adapter. Summary refetches read the current SQLite state after writes.
+// Authentication is supplied by the deployment boundary.
 
 import type { Follow, Post, WireCategory, WireFeed, WireSummary } from './types'
 

@@ -1,4 +1,4 @@
-// MODIFIED (boocat): CommonJS requires became ESM imports so esbuild can bundle
+// MODIFIED (tarangcat): CommonJS requires became ESM imports so esbuild can bundle
 // this file as a module. See vendor/fraidycat/VENDORED.md.
 import ent from 'ent/decode'
 import normalizeUrl from 'normalize-url'
@@ -55,7 +55,7 @@ export function html2text (html) {
 }
 
 //
-// MODIFIED (boocat): upstream called Node's `url.resolve` without importing it.
+// MODIFIED (tarangcat): upstream called Node's `url.resolve` without importing it.
 // The WHATWG URL constructor is available in every browser we target.
 //
 export function resolveUrl (base, href) {

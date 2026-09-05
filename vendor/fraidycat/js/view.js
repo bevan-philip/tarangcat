@@ -1,26 +1,5 @@
-//
-// MODIFIED (boocat), all in this header block:
-//   * CommonJS requires became ESM imports (esbuild bundles this as a module).
-//   * Node's `url` module is gone; `resolveUrl` from ./util.js replaces url.resolve.
-//   * The bundler-specific glob imports ('../images/*.png') are gone; the asset
-//     name -> hashed URL maps now come from the app's #app/assets.js.
-//   * @kickscondor/emoji-button (2019, unmaintained) became a small local picker with
-//     the same three-method interface.
-//   * The reader pane is app code, injected here so the vendored Switch can route to it.
-//   * process.env.STORAGE is gone: there is one build, it always talks to the sidecar.
-//     CAN_ARCHIVE now means "this deployment can save full post content", which Miniflux
-//     does per-feed via its `crawler` setting.
-//
-// MODIFIED (tarangcat), on top of the boocat modifications above:
-//   * The reader pane import/route is gone. Tarang stores full article content, so a
-//     later pass can add it back, but it is out of scope for this MVP (docs/state-shape.md).
-//   * CAN_ARCHIVE is false: Tarang has no per-feed "fetch full content" setting (no
-//     Miniflux crawler equivalent), so the "Read here?" checkbox is hidden.
-//   * The multi-tag follow form is reduced to one optional category because current Tarang
-//     stores one nullable category_id per feed; the home tab remains the blank fallback.
-//   * See docs/state-shape.md for the rest of the tarangcat-specific trims (Settings'
-//     import/export section, AddFollow's copy).
-//
+// MODIFIED (tarangcat): ESM imports, app assets and emoji picker, keyed routes,
+// and Tarang forms and settings. See ../VENDORED.md for local adaptations.
 import { followTitle, html2text, getIndexById, house, sortBySettings,
   isValidFollow, Importances, resolveUrl } from './util.js'
 import { h } from 'hyperapp'
@@ -192,7 +171,7 @@ const EditFollowById = ({ match, setup }) => ({follows}) => {
   if (setup)
     follows.editing = JSON.parse(JSON.stringify(follows.all[match.params.id]), jsonDateParser)
 
-  // MODIFIED (boocat): keyed so a route swap destroys/recreates this node instead of
+  // MODIFIED (tarangcat): keyed so a route swap destroys/recreates this node instead of
   // hyperapp reusing it, which let untracked innerHTML from the reader pane leak in.
   return <div id="edit-feed" key="edit-feed">
     <h2>Edit a Follow</h2>
@@ -206,7 +185,7 @@ const AddFollow = ({ match, setup }) => ({follows}) => {
     follows.editing = {url: match.params.url, title: match.params.title, importance: 0}
   }
 
-  // MODIFIED (boocat): keyed so a route swap destroys/recreates this node instead of
+  // MODIFIED (tarangcat): keyed so a route swap destroys/recreates this node instead of
   // hyperapp reusing it, which let untracked innerHTML from the reader pane leak in.
   return <div id="add-feed" key="add-feed">
     <h2>Add a Follow</h2>
@@ -223,7 +202,7 @@ const AddFollow = ({ match, setup }) => ({follows}) => {
 const AddFeed = () => ({follows, settings}, actions) => {
   let {list, site} = follows.feeds
   let actual = list.some(feed => feed.type)
-  // MODIFIED (boocat): keyed so a route swap destroys/recreates this node instead of
+  // MODIFIED (tarangcat): keyed so a route swap destroys/recreates this node instead of
   // hyperapp reusing it, which let untracked innerHTML from the reader pane leak in.
   return <div id="feed-select" key="feed-select">
     <h2>Select a Feed</h2>
@@ -380,7 +359,7 @@ const ListFollow = ({ location, match }) => ({follows}, actions) => {
   let addLink = '/add?tag=' + encodeURIComponent(tag) + '&importance=' + imp
   u('a.pink').attr('href', (location.hashRouting ? '#!' : '') + addLink)
 
-  // MODIFIED (boocat): keyed so a route swap destroys/recreates this node instead of
+  // MODIFIED (tarangcat): keyed so a route swap destroys/recreates this node instead of
   // hyperapp reusing it, which let untracked innerHTML from the reader pane leak in.
   return <div id="follows" key="follows">
     <div id="tags">
@@ -425,7 +404,7 @@ const ListFollow = ({ location, match }) => ({follows}, actions) => {
           let lastPostAt = lastPostTime(follow, sortPosts), tags = []
           let ago = timeAgo(lastPostAt, now)
           let dk = timeDarkness(lastPostAt, now)
-          // MODIFIED (boocat): the follow's title always links to the site. The reader
+          // MODIFIED (tarangcat): the follow's title always links to the site. The reader
           // route (/view/:entryId) is reached from individual posts, below.
           let linkUrl = follow.url
           let id = `follow-${follow.id}`
@@ -461,14 +440,14 @@ const ListFollow = ({ location, match }) => ({follows}, actions) => {
                       {f.author && f.author !== follow.author && <span class="author">{f.author}</span>}
                       {f.url.startsWith('id:') ? <span class="txt">{TitleTrunc(f.title)}</span> :
                         (follow.fetchesContent && f.id ?
-                          /* MODIFIED (boocat): posts of a 'read here' follow open the in-app
+                          /* MODIFIED (tarangcat): posts of a 'read here' follow open the in-app
                              reader instead of leaving for the site. */
                           <Link to={`/view/${f.id}`}>{TitleTrunc(f.title)}</Link> :
                           <a href={f.url} target={target}>{TitleTrunc(f.title)}</a>)}
                       {!f.index && <span class="ago">{timeAgo(f[sortPosts], now)}</span>}
                     </li>
                   })}</ol>
-                  {/* MODIFIED (boocat): the expand/collapse toggle used to be hidden for
+                  {/* MODIFIED (tarangcat): the expand/collapse toggle used to be hidden for
                       'read here' follows; here it is always available. */}
                   {<a class="collapse" href="#"
                     onclick={e => ToggleShow(e, ".extra", "trunc")}>
@@ -504,7 +483,7 @@ const ListFollow = ({ location, match }) => ({follows}, actions) => {
   </div>
 }
 
-// MODIFIED (boocat): removed ImportFrom — the file-picker import is gone with the
+// MODIFIED (tarangcat): removed ImportFrom — the file-picker import is gone with the
 // import buttons (Miniflux imports OPML).
 
 // MODIFIED (tarangcat): the whole Import/Export section is gone — OPML import/export and
@@ -524,10 +503,10 @@ const ChangeSettings = ({ match, setup }) => (state, {follows}) => {
   </div>
 }
 
-// MODIFIED (boocat): removed the desktop-app-only status-bar hover handler.
+// MODIFIED (tarangcat): removed the desktop-app-only status-bar hover handler.
 
 export default (state, actions) => {
-  // MODIFIED (boocat): there is no separate settings.html page; settings is a route.
+  // MODIFIED (tarangcat): there is no separate settings.html page; settings is a route.
   let settings = false
   if (!state.follows.started)
     return <div id="scanner">

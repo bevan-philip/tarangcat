@@ -1,127 +1,78 @@
-# State shape: what the vendored view expects
+# View state and API mapping
 
-Derived by reading `vendor/fraidycat/js/view.js` line by line, plus `js/util.js` where the
-view delegates. This is the contract `src/data/tarang.ts` has to satisfy. Adapted from
-boocat's `docs/state-shape.md` (same upstream view, different backend); the "How Tarang
-maps onto this" section below is the tarangcat-specific part.
+`src/data/tarang.ts` maps Tarang's wire format to the objects consumed by `vendor/fraidycat/js/view.js` and `js/util.js`.
 
-## Top-level hyperapp state
+## Top-level state
 
-```js
-{
-  follows: { … },   // the module below, src/store/follows.js
-  location: { pathname, previous, rendered, hashRouting }   // @kickscondor/router
-}
-```
+Hyperapp state contains the `follows` module from `src/store/follows.js` and router `location` with `pathname`, `previous`, `rendered`, and `hashRouting`. Hash routing keeps navigation within the static page.
 
-`location` comes from `@kickscondor/router`'s `location({hashRouting: true})`. Hash
-routing keeps the app a single static file.
+| `state.follows` key | Meaning |
+|---|---|
+| `started` | False displays the loading screen. Set after the initial refresh attempt. |
+| `all` | Follow objects keyed by string feed ID. |
+| `settings` | Device-local display preferences. |
+| `baseHref` | Empty string; assets use absolute paths. |
+| `editing` | Follow draft used by the edit form. |
+| `feeds` | Null; the multi-feed discovery picker is unused. |
+| `updating` | Empty object; Tarang performs feed fetching. |
+| `urgent` | Null; no upstream update prompt. |
 
-### `state.follows`
+## Settings
 
-| Key | Type | Used by | Notes |
-|---|---|---|---|
-| `started` | boolean | root view | Falsy renders the loading screen and nothing else. |
-| `all` | `{[id]: Follow}` | `ListFollow`, `EditFollowById` | The whole follow list, keyed by id. |
-| `settings` | object | `Setting`, `ListFollow` | Device-local display prefs; see below. Never sent to Tarang. |
-| `baseHref` | string | every `<img>` | Prefix for asset URLs. tarangcat uses `''` (assets are absolute paths). |
-| `editing` | Follow draft | `FollowForm` | Mutated in place by the form; `save` receives it. |
-| `feeds` | `{list, site}` | `AddFeed` | Upstream's multi-feed discovery picker. **Never populated** — see "What's deliberately unreachable" below. |
-| `updating` | `{[id]: {done, startedAt}}` | root view | Drives the progress bar. tarangcat leaves it `{}`; the server does the fetching. |
-| `urgent` | `{note, approve()}` \| null | root view | Upstream's auto-update nag. tarangcat leaves it null — there's no token to expire. |
-
-`settings` keys the view reads (all optional, all client-local, all `localStorage`):
+All settings are optional and stored under `tarangcat.settings` in localStorage.
 
 | Key | Values | Effect |
 |---|---|---|
-| `sort-follows` | unset \| `createdAt` \| `title` | Sort order within an importance bucket. Unset = most recent post first. tarangcat never sets `createdAt` on a follow, so this option sorts everything as equal. |
-| `mode-updates` | unset \| `updatedAt` | Which post date to sort/display by. Tarang has no separate "updated" time, so `updatedAt` always equals `publishedAt` — this setting is a no-op here, kept only because the view reads it unconditionally. |
-| `mode-reposts` | unset \| `hide` | Hide posts whose `author` differs from the follow's `author`. tarangcat never sets `author` on a post, so this is also inert. |
-| `mode-expand` | unset \| `all` | `all` expands every follow's post list; unset uses the `trunc` class. |
-| `mode-theme` | unset \| `dark` \| `light` | Sets `theme--auto` / `theme--dark` / `theme--light` on the root element. |
-| `mode-tab` | unset \| `_blank` | Link target. Only offered when `IS_WEBEXT`, which is false here. |
+| `sort-follows` | Unset, `createdAt`, `title` | Unset sorts by most recent post. The adapter supplies no `createdAt`, so that choice treats follows as equal. |
+| `mode-updates` | Unset, `updatedAt` | Chooses the post date; both dates are equal in this adapter. |
+| `mode-reposts` | Unset, `hide` | No effect because posts have no author field. |
+| `mode-expand` | Unset, `all` | Expands every follow or truncates post lists. |
+| `mode-theme` | Unset, `dark`, `light` | Automatic, dark, or light theme. |
+| `mode-tab` | Unset, `_blank` | Link target; the control is hidden because `IS_WEBEXT` is false. |
 
-### Follow
+## Follow
 
-```js
-{
-  id:            "42",              // string; the Tarang feed's pk. Appears in #!/edit/:id.
-  url:           "https://…/feed",  // Tarang's feed.url (the feed XML, not a site homepage)
-  feed:          "https://…/feed",  // same value — see "id/url/feed" below
-  title:         "Hacker News",     // feed.name; always set, there is no separate "site's own title"
-  category:      "news",            // feed.category.name; absent means the home tab
-  importance:    0,                 // nearest tier to feed.refresh_interval; see below
-  fetchesContent: false,            // always false — no reader pane in this MVP
-  posts:         [Post, …],         // feed.articles, already capped at 10 by GET /summary
-  activity:      []                 // deferred — see "activity" below
-}
-```
+| Field | Tarang source or value |
+|---|---|
+| `id` | `String(feed.pk)`, also used in edit routes. |
+| `url`, `feed` | Both use `feed.url`, the feed URL. |
+| `title` | `feed.name`. |
+| `category` | `feed.category.name`; omitted when category is null. |
+| `importance` | Nearest refresh-interval tier. |
+| `fetchesContent` | False; reader mode is not yet implemented. |
+| `posts` | `feed.articles` mapped to Post objects; at most ten in the summary. |
+| `activity` | Empty array; the view skips the sparkline. |
 
-Notes that bite:
+`isValidFollow` requires `url`, `feed`, and `id`. A Tarang integer primary key is safe in the edit route. An absent category places the follow on the home tab. Posts are always an array, including for an empty feed. `frago.sort` mutates `posts` and sets `sortedBy`, so follows must remain mutable. Every summary fetch creates a fresh object graph.
 
-- **Dates must be `Date` objects, not numbers or ISO strings.** `timeAgo`/`timeDarkness`
-  do `Math.floor(from_time / 1000)`, and sorting compares with `>`. Tarang's
-  `published_at`/`retrieved_at` are Unix *seconds*
-  (`sqlx`'s `unixepoch()`); `src/data/tarang.ts` converts to `Date` on the way in.
-- **`follow.category` must be absent when the feed is unassigned.** The view treats an
-  absent category as belonging to the home tab. `toFollow()` only sets the key when
-  Tarang's joined `feed.category` is non-null.
-- **`follow.id` must be URL-safe**: it lands in `#!/edit/:id` unescaped. A Tarang `pk` is
-  a positive integer, so `String(feed.pk)` is always safe.
-- **`isValidFollow`** (`util.js`) requires `follow.url && follow.feed && follow.id` — all
-  three, not just `url`. tarangcat sets `feed` to the same string as `url` since Tarang
-  has only one URL per feed (no separate site-URL vs. feed-URL the way Miniflux/boocat
-  distinguish `site_url` from `feed_url`).
-- A follow whose `posts` is not an array is fine; it renders with no post list. tarangcat
-  always sends an array (possibly empty).
-- `frago.sort` mutates `follow.posts` in place and stamps `follow.sortedBy`. The state
-  passed to the view must therefore be mutable plain objects, not frozen ones —
-  `fetchSummary()` returns a fresh object graph on every call, so this is automatic.
+## Post
 
-### Post
+| Field | Tarang source or value |
+|---|---|
+| `id` | `String(article.pk)`. |
+| `title` | `article.title`, with `(untitled)` for empty or null titles. |
+| `url` | `article.url`. |
+| `publishedAt` | `new Date((published_at ?? retrieved_at) * 1000)`. |
+| `updatedAt` | Same Date as `publishedAt`. |
 
-```js
-{
-  id:          "9",          // Tarang article pk, as a string
-  title:       "…",          // falls back to "(untitled)" — Tarang allows a null title
-  url:         "https://…",
-  publishedAt: Date,
-  updatedAt:   Date          // always equal to publishedAt — see settings['mode-updates'] above
-}
-```
+Tarang timestamps use Unix seconds. The view requires Date objects for sorting and time display. Streaming status badges are not emitted because Tarang parses feeds without the upstream scraping layer.
 
-`Status` (upstream's "currently streaming" badges, from its scraping layer) is never
-emitted — Tarang has no scraping layer, only RSS/Atom/JSON Feed parsing.
+## Writes and refresh intervals
 
-## How Tarang maps onto this
+Feed creation uses `POST /tarang/v1/feed`. A category name is resolved with `POST /tarang/v1/category/{name}`; a 409 triggers a category-list lookup. Blank category input produces `category_id: null`. Feed edits use `PATCH /tarang/v1/feed/{id}` with the category ID and refresh interval. A blank edit title leaves the existing name unchanged. Deletion uses `DELETE /tarang/v1/feed/{id}`.
 
-This is the mapping the implementation plan worked out; `src/data/tarang.ts` is the code
-that carries it out.
+| Importance | Refresh interval in seconds |
+|---|---|
+| `0` | 300 |
+| `1` | 3600 |
+| `7` | 21600 |
+| `30` | 43200 |
+| `365` | 86400 |
 
-| Fraidycat concept | Tarang equivalent | Notes |
-|---|---|---|
-| `follow` | a `feed` row (via `GET /tarang/v1/summary`) | `follow.id` ↔ `feed.pk`, `follow.url`/`follow.feed` ↔ `feed.url` |
-| `follow.title` | `feed.name` | One field, no separate "feed's own title" fallback. Editing the title PATCHes `feed.name`. Leaving the edit form's title blank means "don't change the name" (see `editFollow` in `tarang.ts`), not "revert to a discovered title" — Tarang never discovered one. |
-| `follow.category` | the joined `category` in `GET /tarang/v1/summary` | Tarang permits at most one optional category per feed. Creates resolve the category and send `category_id`; edits PATCH `category_id`, including `null` to clear it. |
-| `follow.importance` | `feed.refresh_interval` (seconds) | `0→300s, 1→3600s, 7→21600s, 30→43200s, 365→86400s`, adapter-side only (`IMPORTANCE_TO_INTERVAL` in `tarang.ts`). The *displayed* importance is the nearest tier to whatever `refresh_interval` currently is, so a value set some other way (direct DB edit, a future bulk-import tool) still displays sensibly instead of erroring. Tarang's scheduler (`src/sync.rs` in the `tarang` repo) already keys off `refresh_interval`/`next_poll_at`, so this tier actually drives polling — unlike Miniflux, which has no per-feed interval. |
-| `follow.posts[]` | `articles[]` embedded per feed in `GET /tarang/v1/summary` | Already capped at 10 server-side, matching Fraidycat's own `POSTS_IN_MAIN_INDEX` — no gap to paper over. |
-| `follow.activity` | — | **Deferred.** `toFollow()` always sets `activity: []`; `sparkpoints()` in `view.js` treats a missing/empty array as "nothing to draw" and skips the sparkline rather than erroring. A follow-up would add a dedicated aggregate endpoint (`GROUP BY date(published_at)` per feed) rather than a paginated article-listing endpoint — nothing in this UI browses articles page-by-page. |
-| `follow.editedAt`, sync bookkeeping | — | Not needed. Tarang's DB is the only copy of the follow list; there is no multi-device sync layer or CAS sidecar to reconcile against. |
+The adapter displays the nearest tier for intervals set by another client. Tarang's scheduler uses `refresh_interval` and `next_poll_at` for polling. Writes are followed by `GET /tarang/v1/summary`. No client sync bookkeeping or separate snapshot service is required.
 
-## What's deliberately unreachable
+## Unused view paths
 
-The vendored `view.js` still contains a couple of upstream/boocat code paths that
-tarangcat's adapter never triggers, left in place because removing them would mean
-forking more of the view than necessary:
+The multi-feed discovery picker, `/add-feed` route, and `actions.follows.subscribe` are not reached because Tarang accepts an exact feed URL. `state.follows.feeds` remains null. `CAN_ARCHIVE` is false and the reader route is removed because there is no per-feed content-fetch setting wired to the view.
 
-- **`AddFeed` (the multi-feed discovery picker) and `actions.follows.subscribe`.**
-  Boocat's Miniflux backend can return "this site has several feeds, pick one" from a
-  single site-URL POST. `POST /tarang/v1/feed` has no such concept — it fetches the exact
-  URL you give it as a feed, full stop. `addFollow()` in `tarang.ts` therefore never
-  produces an "ambiguous" result, `state.follows.feeds` is never populated, and the
-  `/add-feed` route is never navigated to. The `AddFollow` form's copy was rewritten to
-  say so plainly (`vendor/fraidycat/VENDORED.md`, tarangcat modification #3).
-- **`follow.fetchesContent`** stays `false` for every follow (`CAN_ARCHIVE = false` in
-  `view.js` hides the "Read here?" checkbox), and the reader route (`/view/:id`) and its
-  `#app/reader/pane.js` import are removed outright rather than left dark, since Tarang
-  has no per-feed setting to drive a checkbox that would otherwise do nothing.
+Activity sparklines require a per-day aggregate endpoint. A paginated article endpoint would not supply that aggregate. OPML import/export and article read/starred state are not implemented.

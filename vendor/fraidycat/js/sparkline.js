@@ -3,7 +3,7 @@
 // by Nando Vieira (ty <3)
 //
 // Upstream inlined it because the desktop build could not load the package.
-// MODIFIED (boocat): this comment reworded; see VENDORED.md.
+// MODIFIED (tarangcat): this comment reworded; see VENDORED.md.
 //
 function getY(max, height, diff, value) {
   return parseFloat((height - (value * height / max) + diff).toFixed(2));
@@ -27,7 +27,7 @@ function buildElement(tag, attrs) {
   return element;
 }
 
-// MODIFIED (boocat): `module.exports` became an ESM default export.
+// MODIFIED (tarangcat): `module.exports` became an ESM default export.
 export default function(svg, entries, options) {
   removeChildren(svg);
 

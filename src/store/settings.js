@@ -8,7 +8,8 @@ const KEY = 'tarangcat.settings'
 export function loadSettings() {
   try {
     const raw = window.localStorage.getItem(KEY)
-    return raw ? JSON.parse(raw) : {}
+    const settings = raw ? JSON.parse(raw) : {}
+    return settings && typeof settings === 'object' && !Array.isArray(settings) ? settings : {}
   } catch {
     return {}
   }

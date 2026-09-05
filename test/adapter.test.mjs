@@ -85,6 +85,30 @@ test('addFollow sends null for an unassigned category', async () => {
   assert.equal(requestBody(request.init).category_id, null)
 })
 
+test('fetchSummary preserves cached content and summaries for the reader', async () => {
+  globalThis.fetch = async () => jsonResponse({ categories: [], feeds: [{
+    pk: 42, name: 'Example', url: 'https://example.test/feed', category: null,
+    refresh_interval: 300, articles: [{
+      pk: 9, url: 'https://example.test/article', title: null,
+      content: '<p>Full cached article</p>', summary: '<p>Summary</p>',
+      published_at: null, retrieved_at: 1700000000,
+    }, {
+      pk: 10, url: 'https://example.test/empty', title: '',
+      content: null, summary: null, published_at: 1700000001, retrieved_at: 1700000002,
+    }],
+  }] })
+  const follows = await adapter.fetchSummary()
+  const [full, empty] = follows['42'].posts
+  assert.equal(follows['42'].fetchesContent, true)
+  assert.equal(full.content, '<p>Full cached article</p>')
+  assert.equal(full.summary, '<p>Summary</p>')
+  assert.equal(full.title, '(untitled)')
+  assert.equal(full.publishedAt.getTime(), 1700000000000)
+  assert.equal(empty.content, '')
+  assert.equal(empty.summary, null)
+  assert.equal(empty.publishedAt.getTime(), 1700000001000)
+})
+
 test('addFollow creates the selected category before posting the feed', async () => {
   const requests = []
   globalThis.fetch = async (url, init) => {

@@ -39,7 +39,9 @@ export default {
     editing: null,
     feeds: null,
     updating: {},
-    urgent: null
+    urgent: null,
+    reader: null,
+    refreshError: null
   },
 
   actions: {
@@ -65,10 +67,11 @@ export default {
       try {
         const all = await fetchSummary()
         if (gen !== generation) return // superseded while this was in flight
-        actions.set({ all })
+        actions.set({ all, refreshError: null })
       } catch (error) {
         if (gen !== generation) return
         console.error('tarangcat: refresh failed', error)
+        actions.set({ refreshError: 'Articles could not be refreshed. Check the connection to Tarang and try again.' })
       }
     },
 
@@ -80,6 +83,14 @@ export default {
       saveSettings(settings)
       actions.set({ settings })
     },
+
+    setReaderSetting: ({ name, value }) => (state, actions) => {
+      const settings = { ...state.settings, [name]: value }
+      saveSettings(settings)
+      actions.set({ settings })
+    },
+
+    closeReader: id => state => state.reader?.post.id === id ? { reader: null } : {},
 
     //
     // Save a follow, after add or edit.

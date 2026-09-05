@@ -29,7 +29,7 @@ The upstream `master` branch contains an incomplete Fraidycat 2 rewrite. Use the
 
 Storage, browser-extension, Electron, Dat, background, popup, manifest, social definitions, and scraping modules are excluded. The build uses esbuild and Dart Sass in place of Parcel and node-sass.
 
-The view accepts one optional category per feed. Add Follow requires a feed URL because Tarang does not discover feeds from a homepage. The settings route contains credits; unsupported import/export controls are removed. The reader route is removed and `CAN_ARCHIVE` is false, hiding the per-feed content checkbox. Tarang already returns article content but has no per-feed crawler setting. Keyed route roots force lifecycle hooks to run when routes change. Post links retain an inactive reader branch for follows with `fetchesContent`, which the adapter currently sets to false.
+The view accepts one optional category per feed. Add Follow requires a feed URL because Tarang does not discover feeds from a homepage. The settings route contains credits; unsupported import/export controls are removed. The `/view/:id` route renders the app reader outside the Fraidycat page layout. `CAN_ARCHIVE` remains false, hiding the per-feed content checkbox. Tarang already returns article content but has no per-feed crawler setting. Keyed route roots force lifecycle hooks to run when routes change. Post links open the reader for follows with `fetchesContent`, which the adapter sets to true. Reader fonts are separately vendored under `vendor/reader-fonts/`.
 
 App-specific style changes belong in `src/styles/overrides.scss`, which compiles after the upstream stylesheet.
 

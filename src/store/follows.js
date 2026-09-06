@@ -7,7 +7,7 @@
 // The action names and state keys are dictated by the vendored view.
 //
 
-import { addFollow, ApiError, editFollow, fetchArticle, fetchFollow, fetchSummary, removeFollow } from '../data/tarang'
+import { addFollow, ApiError, editFollow, fetchArticle, fetchFollow, fetchSummary, listCategories, removeFollow } from '../data/tarang'
 import { loadSettings, saveSettings } from './settings.js'
 
 const HOUSE = '\u{1f3e0}'
@@ -31,6 +31,7 @@ let generation = 0
 let refreshTimer = null
 let readerGeneration = 0
 let editGeneration = 0
+let categoryGeneration = 0
 
 export default {
   state: {
@@ -41,6 +42,8 @@ export default {
     editing: null,
     editId: null,
     editError: null,
+    categories: null,
+    categoryError: null,
     feeds: null,
     updating: {},
     urgent: null,
@@ -49,6 +52,22 @@ export default {
   },
 
   actions: {
+    loadCategories: () => async (_state, actions) => {
+      const gen = ++categoryGeneration
+      actions.set({ categories: null, categoryError: null })
+      try {
+        const categories = await listCategories()
+        if (gen === categoryGeneration) actions.set({ categories })
+      } catch {
+        if (gen === categoryGeneration) actions.set({ categoryError: 'Categories could not be loaded. You can still type a category.' })
+      }
+    },
+
+    closeCategories: () => () => {
+      ++categoryGeneration
+      return { categories: null, categoryError: null }
+    },
+
     init: () => async (_state, actions) => {
       actions.set({ settings: loadSettings() })
       await actions.refresh()

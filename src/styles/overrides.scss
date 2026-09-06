@@ -13,9 +13,45 @@
   &.text-category { font-size: 1.1rem; }
 }
 
-//
+.follow .category-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 36rem;
+  max-height: 14rem;
+  overflow-y: auto;
+  padding: 4px;
+  margin: 10px -4px;
+
+  button {
+    margin: 0 !important;
+    min-width: 44px;
+    min-height: 44px;
+    max-width: 100%;
+    padding: 6px 12px;
+    border-radius: 12px;
+    font: 1rem/1.4 'Inria Sans', sans-serif;
+    overflow-wrap: anywhere;
+    cursor: pointer;
+
+    &.emoji-category { font-size: 1.5rem; }
+
+    @include themed() {
+      color: t('plain');
+      background: t('paper');
+      border: 1px solid t('border');
+      &:hover { background: t('button'); }
+      &[aria-pressed='true'] {
+        background: t('button');
+        border-color: t('color');
+        box-shadow: inset 0 0 0 1px t('color');
+      }
+      &:focus-visible { outline: 2px solid t('color'); outline-offset: 2px; }
+    }
+  }
+}
+
 // The replacement emoji picker (see src/emoji.js).
-//
 .emoji-picker {
   display: grid;
   grid-template-columns: repeat(8, 1fr);

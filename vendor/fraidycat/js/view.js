@@ -107,10 +107,13 @@ const FollowForm = (match, setup, isNew) => ({follows}, actions) => {
   }
   picker.on('emoji', ch => {
     follow.category = ch
-    actions.follows.set({follow})
+    actions.follows.set({editing: follow})
   })
 
-  return follow && <form class="follow" onsubmit={FormFreeze}>
+  // MODIFIED (tarangcat): load all existing categories, including unused ones.
+  return follow && <form class="follow" onsubmit={FormFreeze}
+    oncreate={() => actions.follows.loadCategories()}
+    ondestroy={() => { picker.hidePicker(); actions.follows.closeCategories() }}>
     {isNew &&
       <div>
         <label for="url">URL</label>
@@ -134,11 +137,27 @@ const FollowForm = (match, setup, isNew) => ({follows}, actions) => {
     <div>
       <label for="category" class="optional">Category</label>
       <input type="text" id="category" value={follow.category || ''}
-        oninput={e => e.target.value ? (follow.category = e.target.value.trim()) : (delete follow.category)} />
+        oninput={e => {
+          follow.category = e.target.value
+          actions.follows.set({editing: follow})
+        }} />
       <a href="#" class="emoji" onclick={e => {
         e.preventDefault()
         picker.pickerVisible ? picker.hidePicker() : picker.showPicker(e)
       }}>&#128513;</a>
+      {follows.categories?.length > 0 && <div class="category-choices" role="group" aria-label="Existing categories">
+        {follows.categories.map(category => <button type="button" key={category.pk}
+          class={/[\p{L}\p{N}]/u.test(category.name) ? 'text-category' : 'emoji-category'}
+          aria-pressed={(follow.category || '').trim() === category.name ? 'true' : 'false'}
+          onclick={() => {
+            follow.category = category.name
+            actions.follows.set({editing: follow})
+          }}>{category.name}</button>)}
+      </div>}
+      {follows.categoryError ? <p class="note" role="status">{follows.categoryError}{' '}
+        <button type="button" onclick={() => actions.follows.loadCategories()}>Try again</button>
+      </p> : follows.categories === null && <p class="note" role="status">Loading categories…</p>}
+      <p class="note">Choose an existing category or type a new one.</p>
       <p class="note">(Optional. If left blank, this follow appears on the main page.)</p>
     </div>
 

@@ -15,6 +15,10 @@ import { safeUrl } from '#app/reader/content.js'
 const CAN_ARCHIVE = false
 const IS_WEBEXT = false
 
+// MODIFIED (tarangcat): keep category choices and tabs in the same order, home first.
+const compareCategories = (a, b) => a === b ? 0
+  : a === house ? -1 : b === house ? 1 : a < b ? -1 : 1
+
 
 const FormFreeze = (e) => {
   e.preventDefault()
@@ -146,7 +150,7 @@ const FollowForm = (match, setup, isNew) => ({follows}, actions) => {
         picker.pickerVisible ? picker.hidePicker() : picker.showPicker(e)
       }}>&#128513;</a>
       {follows.categories?.length > 0 && <div class="category-choices" role="group" aria-label="Existing categories">
-        {follows.categories.map(category => <button type="button" key={category.pk}
+        {follows.categories.slice().sort((a, b) => compareCategories(a.name, b.name)).map(category => <button type="button" key={category.pk}
           class={/[\p{L}\p{N}]/u.test(category.name) ? 'text-category' : 'emoji-category'}
           aria-pressed={(follow.category || '').trim() === category.name ? 'true' : 'false'}
           onclick={() => {
@@ -376,8 +380,7 @@ const ListFollow = ({ location, match }) => ({follows}, actions) => {
   let impa = Object.keys(imps)
   let imp = match.params.importance || (impa.length > 0 ? Math.min(...impa) : 0)
   viewable = viewable.filter(follow => (follow.importance == imp))
-  let tagTabs = Object.keys(tags).filter(t => t != house).sort()
-  tagTabs.unshift(house)
+  let tagTabs = [...new Set([house, ...Object.keys(tags)])].sort(compareCategories)
   let addLink = '/add?tag=' + encodeURIComponent(tag) + '&importance=' + imp
   u('a.pink').attr('href', (location.hashRouting ? '#!' : '') + addLink)
 

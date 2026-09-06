@@ -1,6 +1,7 @@
 import { h } from 'hyperapp'
 import { Link } from '@kickscondor/router'
 import { renderArticle, safeUrl } from './content.js'
+import { StarButton, ArticleError } from './article-controls.js'
 
 export const fonts = [
   ['serif', 'IBM Plex Serif'],
@@ -36,7 +37,7 @@ export const ReaderPane = ({ match }) => ({ follows }, actions) => {
   const selected = reader?.post ? reader : null
   const font = fonts.some(([key]) => key === follows.settings['reader-font']) ? follows.settings['reader-font'] : 'serif'
   const size = ['small', 'medium', 'large'].includes(follows.settings['reader-size']) ? follows.settings['reader-size'] : 'medium'
-  const back = selected?.back || '/'
+  const back = reader?.back || '/'
   const focusTitle = element => {
     window.scrollTo(0, 0)
     element.querySelector('h1')?.focus({ preventScroll: true })
@@ -52,7 +53,7 @@ export const ReaderPane = ({ match }) => ({ follows }, actions) => {
       if (event.key === 'Escape' && !['INPUT', 'SELECT', 'TEXTAREA'].includes(event.target.tagName)) actions.location.go(back)
     }}>
     <nav class="reader-toolbar" aria-label="Reader navigation">
-      <Link to={back}>← Back to feeds</Link>
+      <Link to={back}>{back === '/starred' ? '← Back to starred articles' : '← Back to feeds'}</Link>
       <ReaderControls settings={follows.settings} actions={actions} />
     </nav>
     {selected ? <div class="reader-page">
@@ -60,11 +61,15 @@ export const ReaderPane = ({ match }) => ({ follows }, actions) => {
         <p class="reader-source">{selected.title}</p>
         <h1 tabindex="-1">{selected.post.title}</h1>
         <div class="reader-meta">
+          <StarButton post={selected.post} />
           {Number.isFinite(Number(selected.post.publishedAt)) && <time datetime={selected.post.publishedAt.toISOString()}>
             {selected.post.publishedAt.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
           </time>}
-          {safeUrl(selected.post.url) && <a href={safeUrl(selected.post.url)} target="_blank" rel="noopener noreferrer">Open original ↗</a>}
+          {safeUrl(selected.post.url) && <a href={safeUrl(selected.post.url)} target="_blank" rel="noopener noreferrer"
+            onclick={() => { if (!selected.post.isRead) actions.follows.saveArticleState({ id, flags: { is_read: true } }) }}
+            onauxclick={event => { if (event.button === 1 && !selected.post.isRead) actions.follows.saveArticleState({ id, flags: { is_read: true } }) }}>Open original ↗</a>}
         </div>
+        <ArticleError id={id} />
       </header>
       <div class="reader-content" oncreate={el => renderArticle(el, selected.post)} onupdate={el => renderArticle(el, selected.post)} />
     </div> : <div class="reader-page">

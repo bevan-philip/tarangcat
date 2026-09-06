@@ -18,7 +18,15 @@ Back to feeds returns to the article's category and importance group. Escape per
 
 The reader keeps the open article in memory while it is displayed, so periodic summary refreshes cannot remove the text mid-read. Leaving the reader releases that copy. A reloaded or bookmarked reader route (`#!/view/{article-id}`) loads the article directly, including articles outside the latest ten previews per feed. Loading displays a progress message. An absent article displays an unavailable message. Try again retries the article request after a failure. Leaving the route prevents a pending request from replacing the next article.
 
-If cached content is empty, the reader displays the summary and labels it as such. If neither is available, it displays a missing-content message and retains the source link when the URL is valid. The reader does not mark articles read or starred.
+If cached content is empty, the reader displays the summary and labels it as such. If neither is available, it displays a missing-content message and retains the source link when the URL is valid.
+
+## Read state and starred articles
+
+Opening an article in the reader marks it read through `PATCH /tarang/v1/article/{id}`. Middle-click and modifier-click on an article title also mark it read when opening the original URL. Browser context-menu navigation cannot be observed by the app and does not update read state. Article link dimming follows Tarang's read flag. Browser history does not determine the colour.
+
+The star button beside each article title and in the reader toggles its saved state. The top-right star opens the starred list at `#!/starred`. This list uses `GET /tarang/v1/starred`, including older articles outside the feed summary. The API must return `article_id`, `feed_id`, feed name, preview fields, and read/starred flags. Opening a saved article fetches its content through the article endpoint. Back to starred articles and Escape return to the saved list.
+
+Read and starred state remain in Tarang across devices. Visible lists refresh every minute, on navigation, and when the browser regains focus or visibility. Failed state updates retain the last confirmed state and show a retry button. Writes to the same article run in sequence so a read update cannot overwrite a star update.
 
 ## Article formatting
 

@@ -10,7 +10,7 @@ import sparkline from './sparkline.js'
 import u from '@kickscondor/umbrellajs'
 import { images, svg, webp } from '#app/assets.js'
 import { ReaderPane } from '#app/reader/pane.js'
-import { safeUrl } from '#app/reader/content.js'
+import { ArticleLink, StarButton, ArticleError, StarredArticles } from '#app/reader/article-controls.js'
 
 const CAN_ARCHIVE = false
 const IS_WEBEXT = false
@@ -468,14 +468,11 @@ const ListFollow = ({ location, match }) => ({follows}, actions) => {
                         (follow.fetchesContent && f.id ?
                           /* MODIFIED (tarangcat): ordinary activation opens the reader;
                              native new-tab and copy-link actions use the original URL. */
-                          <a href={safeUrl(f.url) || `#!/view/${f.id}`} rel="noopener noreferrer"
-                            onclick={e => {
-                              if (e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return
-                              e.preventDefault()
-                              actions.location.go(`/view/${f.id}`)
-                            }}>{TitleTrunc(f.title)}</a> :
+                          <ArticleLink post={f}>{TitleTrunc(f.title)}</ArticleLink> :
                           <a href={f.url} target={target}>{TitleTrunc(f.title)}</a>)}
                       {!f.index && <span class="ago">{timeAgo(f[sortPosts], now)}</span>}
+                      <StarButton post={f} />
+                      <ArticleError id={f.id} />
                     </li>
                   })}</ol>
                   {/* MODIFIED (tarangcat): the expand/collapse toggle used to be hidden for
@@ -585,6 +582,8 @@ export default (state, actions) => {
               (urgent && <li id="urgent"><p><a href="#" onclick={e => {	
                 e.preventDefault(); urgent.approve()}}>{urgent.note}</a></p></li>)}
             <li><Link to="/add" class="pink" title="Add a Follow" accesskey="n"><img src={state.follows.baseHref + svg['add']} width="16" /></Link></li>
+            <li><Link to="/starred" title="Starred articles" aria-label="Starred articles"
+              aria-current={state.location.pathname === '/starred' ? 'page' : undefined}>☆</Link></li>
             <li><Link to="/settings" title="Settings"><img src={state.follows.baseHref + svg['gear']} width="16" /></Link></li>
           </ul>}
         </div>
@@ -592,6 +591,7 @@ export default (state, actions) => {
       </header>
       <section>
         <Switch>
+          <Route path="/starred" render={StarredArticles} />
           <Route path="/settings" render={ChangeSettings} />
           <Route path="/add" render={AddFollow} />
           <Route path="/add-feed" render={AddFeed} />

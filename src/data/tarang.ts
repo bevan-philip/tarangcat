@@ -1,7 +1,7 @@
 // Tarang API adapter. Summary refetches read the current SQLite state after writes.
 // Authentication is supplied by the deployment boundary.
 
-import type { Follow, Post, WireArticle, WireCategory, WireFeed, WireFeedDetail, WireSummary } from './types'
+import type { Follow, Post, WireArticle, WireCategory, WireFeed, WireFeedDetail, WireSummary, WireStarredArticle } from './types'
 
 /** Set at build time (build.mjs); '' means same-origin. */
 declare const __TARANG_API_BASE__: string
@@ -82,6 +82,8 @@ function toPost(article: WireFeed['articles'][number]): Post {
   const publishedAt = new Date(publishedAtSeconds * 1000)
   return {
     id: String(article.pk),
+    isRead: article.is_read === true,
+    isStarred: article.is_starred === true,
     title: article.title || '(untitled)',
     url: article.url,
     content: '',
@@ -121,6 +123,15 @@ export async function fetchSummary(): Promise<Record<string, Follow>> {
 export async function fetchArticle(id: string): Promise<{ post: Post, feedId: string }> {
   const article = await apiJson<WireArticle>(`/tarang/v1/article/${encodeURIComponent(id)}`)
   return { post: { ...toPost(article), content: article.content ?? '' }, feedId: String(article.feed) }
+}
+
+export async function updateArticleState(id: string, flags: { is_read?: boolean, is_starred?: boolean }): Promise<{ is_read: boolean, is_starred: boolean }> {
+  return apiJson(`/tarang/v1/article/${encodeURIComponent(id)}`, jsonBody('PATCH', flags))
+}
+
+export async function fetchStarred(): Promise<Array<Post & { feedTitle: string }>> {
+  const articles = await apiJson<WireStarredArticle[]>('/tarang/v1/starred')
+  return articles.map(article => ({ ...toPost({ ...article, pk: article.article_id, feed: article.feed_id }), feedTitle: article.feed_name }))
 }
 
 export async function fetchFollow(id: string): Promise<Follow> {

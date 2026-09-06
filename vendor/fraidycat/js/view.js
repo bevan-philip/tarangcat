@@ -10,6 +10,7 @@ import sparkline from './sparkline.js'
 import u from '@kickscondor/umbrellajs'
 import { images, svg, webp } from '#app/assets.js'
 import { ReaderPane } from '#app/reader/pane.js'
+import { BulkFeeds } from '#app/bulk-feeds.js'
 import { ArticleLink, StarButton, ArticleError, StarredArticles } from '#app/reader/article-controls.js'
 
 const CAN_ARCHIVE = false
@@ -378,7 +379,8 @@ const ListFollow = ({ location, match }) => ({follows}, actions) => {
     return (a.importance - b.importance) || sortBy
   })
   let impa = Object.keys(imps)
-  let imp = match.params.importance || (impa.length > 0 ? Math.min(...impa) : 0)
+  let imp = Number(match.params.importance ?? (follows.bulk?.category === tag ? follows.bulk.frequency : (impa.length > 0 ? Math.min(...impa) : 0)))
+  const bulk = follows.bulk?.category === tag && follows.bulk.frequency === imp ? follows.bulk : null
   viewable = viewable.filter(follow => (follow.importance == imp))
   let tagTabs = [...new Set([house, ...Object.keys(tags)])].sort(compareCategories)
   let addLink = '/add?tag=' + encodeURIComponent(tag) + '&importance=' + imp
@@ -395,6 +397,7 @@ const ListFollow = ({ location, match }) => ({follows}, actions) => {
       <a href="#" class="left" oncreate={Nudge(30)}>&lsaquo;</a>
       <a href="#" class="right" oncreate={Nudge(-30)}>&rsaquo;</a>
     </div>
+    <div class="follow-toolbar">
     <div class="sort">
       <a href="#" onclick={e => ToggleShow(e, "div")}>
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -424,6 +427,9 @@ const ListFollow = ({ location, match }) => ({follows}, actions) => {
           <li>{sel[2]} <Link to={`/tag/${encodeURIComponent(tag)}?importance=${sel[0]}`}>{sel[1]}</Link></li>)))}
       </ul>
     </div>
+    {/* MODIFIED (tarangcat): management applies to the visible frequency. */}
+    <BulkFeeds category={tag} frequency={imp} feeds={viewable} />
+    </div>
     {viewable.length > 0 ?
       <ol>{viewable.map(follow => {
         try {
@@ -435,7 +441,10 @@ const ListFollow = ({ location, match }) => ({follows}, actions) => {
           let linkUrl = follow.url
           let id = `follow-${follow.id}`
           let target = follows.settings['mode-tab'] || ""
-          return <li key={id} class={dk || 'age-X'}>
+          return <li key={id} class={`${dk || 'age-X'}${bulk ? ' feed-selectable' : ''}${bulk?.selected[follow.id] ? ' feed-selected' : ''}`}>
+            {bulk && <input class="feed-selection" type="checkbox" aria-label={`Select ${follow.title || follow.url}`}
+              checked={!!bulk.selected[follow.id]} disabled={bulk.pending}
+              onchange={e => actions.follows.changeBulk({ selected: { ...bulk.selected, [follow.id]: e.target.checked } })} />}
             <a name={id}></a>
             <h3>
               <Link to={linkUrl} target={target}>
@@ -501,7 +510,7 @@ const ListFollow = ({ location, match }) => ({follows}, actions) => {
             <Link to={`/edit/${follow.id}`} class="edit" title="edit"><img src={follows.baseHref + images['270f']} /></Link>
           </h3></li>
         }
-      })}</ol> :
+      })}</ol> : bulk ? <p>No feeds at this frequency.</p> :
         <div class="intro">
           <h3>Ready?</h3>
           <p>Let's get Fraidycat going, yeah?</p>

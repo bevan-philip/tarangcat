@@ -96,6 +96,59 @@ button.article-star {
   }
 }
 
+// Category-wide feed management.
+#follows .follow-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 20px;
+  .sort { grid-column: 3; grid-row: 1; float: none; }
+  .sort > a { display: flex; align-items: center; }
+  #imps { grid-column: 1; grid-row: 1; min-width: 0; }
+  #imps ul { margin: 0; }
+  #imps li { display: inline-block; }
+  .bulk-feeds > button { grid-column: 2; grid-row: 1; margin: 0; }
+  #bulk-panel { grid-column: 1 / -1; grid-row: 2; min-width: 0; }
+  @media (max-width: 600px) {
+    #imps { grid-column: 1 / -1; grid-row: 2; }
+    #bulk-panel { grid-row: 3; }
+  }
+}
+
+.bulk-feeds {
+  display: contents;
+  font: 1rem/1.4 'Inria Sans', sans-serif;
+  button, input, select { font: inherit; }
+  button { padding: 7px 12px; margin: 4px 8px 4px 0; cursor: pointer; }
+  button:disabled { opacity: 0.5; cursor: default; }
+  fieldset { display: flex; flex-wrap: wrap; align-items: end; gap: 8px 16px; border: 0; padding: 0; min-width: 0; }
+  #bulk-panel { padding: 10px 0; margin-top: 4px; }
+  p { margin: 8px 0; }
+  small { display: block; font-size: 0.85rem; }
+  .bulk-fields { display: flex; flex-wrap: wrap; flex: 1 1 300px; gap: 12px; }
+  .bulk-fields > div { flex: 1 1 140px; min-width: 0; }
+  .bulk-fields input, select { display: block; box-sizing: border-box; width: 100%; padding: 8px; margin: 4px 0; }
+  fieldset button, .bulk-fields input, .bulk-fields select { box-sizing: border-box; height: 2.5rem; }
+  @include themed() {
+    #bulk-panel { border-top: 1px solid t('border'); border-bottom: 1px solid t('border'); }
+    button, input, select { color: t('plain'); background: t('paper'); border: 1px solid t('border'); border-radius: 4px; }
+    button:hover:not(:disabled) { background: t('button'); }
+    small { color: t('span'); }
+    :focus-visible { outline: 2px solid t('color'); outline-offset: 2px; }
+  }
+}
+
+#follows > ol > li.feed-selectable {
+  position: relative;
+  padding-left: 32px;
+  .feed-selection { position: absolute; z-index: 3; left: 4px; top: 12px; width: 18px; height: 18px; margin: 0; cursor: pointer; }
+  @include themed() {
+    &.feed-selected { background: t('button'); }
+    .feed-selection:focus-visible { outline: 2px solid t('color'); outline-offset: 2px; }
+  }
+}
+
 // The replacement emoji picker (see src/emoji.js).
 .emoji-picker {
   display: grid;

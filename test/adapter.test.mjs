@@ -44,6 +44,21 @@ function requestBody(init) {
   return JSON.parse(init.body)
 }
 
+test('bulk category preparation resolves once and patches only the category', async () => {
+  const calls = []
+  globalThis.fetch = async (url, init) => {
+    calls.push({ url, init })
+    if (init.method === 'POST') return jsonResponse({ id: 12 })
+    return new Response(null, { status: 204 })
+  }
+  const update = await adapter.prepareFollowUpdate({ category: ' New category ' })
+  await update('1')
+  await update('2')
+  assert.equal(calls[0].url, '/tarang/v1/category/New%20category')
+  assert.equal(calls.length, 3)
+  for (const call of calls.slice(1)) assert.deepEqual(requestBody(call.init), { category_id: 12 })
+})
+
 test('starred previews use article_id rather than feed_id and preserve server state', async () => {
   globalThis.fetch = async url => {
     assert.equal(url, '/tarang/v1/starred')

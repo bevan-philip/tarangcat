@@ -9,6 +9,7 @@
 
 import { addFollow, ApiError, editFollow, fetchArticle, fetchFollow, fetchSummary, fetchStarred, updateArticleState, listCategories, removeFollow } from '../data/tarang'
 import { loadSettings, saveSettings } from './settings.js'
+import { prepareFollowUpdate } from '../data/tarang'
 
 const HOUSE = '\u{1f3e0}'
 
@@ -47,6 +48,8 @@ export default {
     editError: null,
     categories: null,
     categoryError: null,
+    bulk: null,
+    bulkBusy: false,
     feeds: null,
     updating: {},
     urgent: null,
@@ -59,6 +62,52 @@ export default {
   },
 
   actions: {
+    openBulk: ({ category, frequency }) => (_state, actions) => {
+      actions.set({ bulk: { category, frequency, selected: {}, operation: 'importance', importance: frequency, destination: '', pending: false, message: '' } })
+      actions.loadCategories()
+    },
+    closeBulk: () => ({ bulk: null }),
+    changeBulk: patch => state => state.bulk && !state.bulk.pending ? { bulk: { ...state.bulk, ...patch } } : {},
+    applyBulk: () => async (state, actions) => {
+      const bulk = state.bulk
+      if (!bulk || bulk.pending || state.bulkBusy) return
+      const ids = Object.keys(bulk.selected).filter(id => bulk.selected[id] && state.all[id] && (state.all[id].category || HOUSE) === bulk.category && state.all[id].importance === bulk.frequency)
+      if (!ids.length) return
+      if (bulk.operation === 'delete' && !window.confirm(`Delete ${ids.length} selected feed${ids.length === 1 ? '' : 's'} and their cached articles? This cannot be undone.`)) return
+      actions.set({ bulkBusy: true, bulk: { ...bulk, pending: true, message: '' } })
+      ++generation
+      ++activeWrites
+      const failed = []
+      try {
+        const change = bulk.operation === 'category' ? { category: bulk.destination.trim() } : { importance: bulk.importance }
+        const write = bulk.operation === 'delete' ? removeFollow : await prepareFollowUpdate(change)
+        // Keep requests bounded for large OPML imports and retain individual failures.
+        for (const id of ids) {
+          try {
+            await write(id)
+            actions.applyBulkResult({ id, change, operation: bulk.operation })
+          } catch { failed.push(id) }
+        }
+        actions.finishBulk({ original: bulk, failed, message: `${ids.length - failed.length} of ${ids.length} feeds updated.${failed.length ? ' Failed feeds remain selected. Try again.' : ''}` })
+      } catch {
+        actions.finishBulk({ original: bulk, failed: ids, message: 'Could not prepare this update. Your selection is unchanged. Try again.' })
+      } finally {
+        ++generation
+        --activeWrites
+        actions.set({ bulkBusy: false })
+        if (!activeWrites) actions.refresh()
+      }
+    },
+    applyBulkResult: ({ id, change, operation }) => state => {
+      const all = { ...state.all }
+      if (operation === 'delete') delete all[id]
+      else if (all[id]) all[id] = { ...all[id], ...change }
+      return { all }
+    },
+    finishBulk: ({ original, failed, message }) => state => {
+      if (!state.bulk || state.bulk.category !== original.category || state.bulk.frequency !== original.frequency || !state.bulk.pending) return {}
+      return { bulk: { ...state.bulk, pending: false, selected: Object.fromEntries(failed.map(id => [id, true])), message } }
+    },
     saveArticleState: ({ id, flags }) => (_state, actions) => {
       ++generation
       ++activeWrites

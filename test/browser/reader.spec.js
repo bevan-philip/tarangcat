@@ -257,7 +257,7 @@ test('reader bookmark resolves an older article without a summary request', asyn
   await page.goto('/#!/view/99')
   await expect(page.getByRole('heading', { name: 'Article 99', exact: true })).toBeVisible()
   await expect(page.locator('.reader-content strong')).toHaveText('emphasis')
-  expect(requests).toEqual(['article/99', 'feed/42', 'category'])
+  expect(requests).toEqual(['article/99', 'feed/42', 'category', 'article/99'])
 })
 
 test('edit load failures can be retried', async ({ page }) => {

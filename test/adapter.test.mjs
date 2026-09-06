@@ -44,6 +44,35 @@ function requestBody(init) {
   return JSON.parse(init.body)
 }
 
+test('starred previews use article_id rather than feed_id and preserve server state', async () => {
+  globalThis.fetch = async url => {
+    assert.equal(url, '/tarang/v1/starred')
+    return jsonResponse([{ article_id: 99, feed_id: 42, feed_name: 'Notes', title: null,
+      url: 'https://example.test/old', summary: 'Summary', published_at: null,
+      retrieved_at: 123, is_read: true, is_starred: true }])
+  }
+  const [post] = await adapter.fetchStarred()
+  assert.equal(post.id, '99')
+  assert.equal(post.feedTitle, 'Notes')
+  assert.equal(post.title, '(untitled)')
+  assert.equal(post.publishedAt.getTime(), 123000)
+  assert.equal(post.isRead, true)
+  assert.equal(post.isStarred, true)
+  assert.equal(post.content, '')
+})
+
+test('article PATCH sends only supplied flags, including false, and propagates errors', async () => {
+  globalThis.fetch = async (url, init) => {
+    assert.equal(url, '/tarang/v1/article/99')
+    assert.equal(init.method, 'PATCH')
+    assert.deepEqual(requestBody(init), { is_starred: false })
+    return jsonResponse({ pk: 99, is_read: true, is_starred: false })
+  }
+  assert.deepEqual(await adapter.updateArticleState('99', { is_starred: false }), { pk: 99, is_read: true, is_starred: false })
+  globalThis.fetch = async () => jsonResponse({ error: 'Unavailable' }, 503)
+  await assert.rejects(adapter.updateArticleState('99', { is_read: true }), { status: 503 })
+})
+
 test('fetchSummary reads the current summary endpoint and converts an unassigned feed', async () => {
   let requestedUrl
   globalThis.fetch = async (url) => {

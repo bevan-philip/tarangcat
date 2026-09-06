@@ -28,6 +28,12 @@ export interface WireArticle extends WireArticlePreview {
   content: string
 }
 
+export interface WireStarredArticle extends Omit<WireArticlePreview, 'pk' | 'feed'> {
+  article_id: number
+  feed_id: number
+  feed_name: string
+}
+
 export interface WireFeed {
   pk: number
   name: string
@@ -56,6 +62,8 @@ export interface WireSummary {
 /** Post fields consumed by the vendored view. */
 export interface Post {
   id: string
+  isRead: boolean
+  isStarred: boolean
   title: string
   url: string
   publishedAt: Date

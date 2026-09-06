@@ -4,6 +4,51 @@
 // `themed()` and `t()` come from the vendored stylesheet imported before this one.
 //
 
+#follows .post ol.title li a.article-link, #starred a.article-link {
+  @include themed() {
+    &, &:visited { color: t('color'); }
+    &.is-read, &.is-read:visited { color: t('visited'); }
+    &:hover { color: t('hover'); }
+  }
+}
+
+button.article-star {
+  pointer-events: auto;
+  display: inline-block;
+  margin: 0 0 0 6px;
+  padding: 2px 6px;
+  min-width: 28px;
+  border: 0;
+  background: transparent;
+  font: 20px/1.2 sans-serif;
+  cursor: pointer;
+  vertical-align: middle;
+  @include themed() {
+    color: t('span');
+    &[aria-pressed='true'] { color: t('color'); }
+    &:hover { background: t('button'); }
+  }
+  &:disabled { opacity: 0.5; cursor: wait; }
+  &:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+}
+
+.article-error { display: block; font-size: 0.9rem; button { pointer-events: auto; } }
+#starred {
+  .starred-list { list-style: none; padding: 0; }
+  .starred-list > li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 14px 0;
+    @include themed() { border-bottom: 1px solid t('rule'); }
+  }
+  .starred-list > li > div { min-width: 0; overflow-wrap: anywhere; }
+  .article-star { margin: 0; flex-shrink: 0; }
+  .starred-source { font-size: 0.9rem; margin: 5px 0 0; @include themed() { color: t('span'); } }
+}
+
+.reader-shell button.article-star { color: var(--reader-link); background: transparent; margin: 0; }
+
 #follows #tags li {
   font-family: 'Inria Sans', sans-serif;
   vertical-align: bottom;

@@ -18,7 +18,7 @@ The upstream `master` branch contains an incomplete Fraidycat 2 rewrite. Use the
 | Local path | Upstream path | Local changes |
 |---|---|---|
 | `LICENSE.md` | `LICENSE.md` | None. |
-| `js/view.js` | `src/js/view.js` | ESM imports, app asset maps, local emoji picker, keyed route roots, Tarang forms and settings, direct feed loading for edit routes, article state controls, and starred-list navigation. |
+| `js/view.js` | `src/js/view.js` | ESM imports, app asset maps, local emoji picker, keyed route roots, Tarang forms and settings, direct feed loading for edit routes, article state controls, starred-list navigation, and the category bulk-feed panel. |
 | `js/util.js` | `src/js/util.js` | ESM imports and browser URL resolution. |
 | `js/sparkline.js` | `src/js/sparkline.js` | ESM export and comment wording. |
 | `js/compare.js` | `src/js/compare.js` | ESM export; currently unused. |

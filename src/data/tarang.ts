@@ -220,3 +220,13 @@ export async function editFollow(
 export async function removeFollow(id: string): Promise<void> {
   await apiFetch(`/tarang/v1/feed/${id}`, { method: 'DELETE' })
 }
+
+/** Resolve a bulk edit once, then PATCH only the requested field on each feed. */
+export async function prepareFollowUpdate(change: { category?: string, importance?: number }): Promise<(id: string) => Promise<void>> {
+  const body = change.category !== undefined
+    ? { category_id: await categoryIdForName(change.category) }
+    : { refresh_interval: intervalForImportance(change.importance ?? 0) }
+  return async id => {
+    await apiFetch(`/tarang/v1/feed/${encodeURIComponent(id)}`, jsonBody('PATCH', body))
+  }
+}

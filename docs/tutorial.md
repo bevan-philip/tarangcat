@@ -32,3 +32,9 @@ A running Tarang instance is required. The examples assume it listens at `http:/
 6. Edit a file under `src/`. The watcher rebuilds `dist/`; reload the browser to display the change.
 
 Stop both commands with Ctrl+C. The local server only serves files; it does not start Tarang or rebuild assets. If feeds do not load, inspect the browser's request to `http://127.0.0.1:3000/tarang/v1/summary` and confirm that Tarang is reachable and permits the frontend origin through CORS.
+
+## Manage feeds in a category
+
+Open a category and frequency, then select Manage feeds. Checkboxes appear beside the feeds on the page, with bulk actions above the list. Select individual feeds or Select all, choose an action, and apply it to the selection. Only feeds at the current frequency are included. Available actions change importance, move feeds to an existing or new category, or delete feeds and their cached articles. A blank destination moves feeds to Home. Deletion requires confirmation.
+
+Updates apply separately to each feed. Successful updates clear from the selection; failed updates remain selected for retry. Changing category or frequency, or toggling Manage feeds off, clears the selection. An update already in progress continues after the controls are hidden.

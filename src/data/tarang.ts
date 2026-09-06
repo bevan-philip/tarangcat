@@ -130,7 +130,7 @@ export async function fetchFollow(id: string): Promise<Follow> {
   return toFollow({ ...feed, category, articles: [] })
 }
 
-async function listCategories(): Promise<WireCategory[]> {
+export async function listCategories(): Promise<WireCategory[]> {
   return apiJson<WireCategory[]>('/tarang/v1/category')
 }
 

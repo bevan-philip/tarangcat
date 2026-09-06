@@ -242,7 +242,7 @@ test('edit bookmark loads and saves feed metadata without requesting a summary u
   await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Fresh title')
   await page.evaluate(() => window.dispatchEvent(new Event('focus')))
   await page.getByLabel('Title', { exact: true }).fill('Changed title')
-  expect(requests).toEqual(['feed/42'])
+  expect(requests).toEqual(['feed/42', 'category'])
   await page.getByRole('button', { name: 'Save', exact: true }).click()
   await expect(page.locator('#follows')).toBeVisible()
   await expect.poll(() => requests.includes('summary')).toBe(true)

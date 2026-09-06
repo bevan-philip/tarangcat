@@ -367,7 +367,8 @@ const ListFollow = ({ location, match }) => ({follows}, actions) => {
   return <div id="follows" key="follows">
     <div id="tags">
       <ul>
-      {tagTabs.map(t => <li class={timeDarkness(tags[t], now)}><Link to={`/tag/${encodeURIComponent(t)}`} class={t === tag && 'active'}>{t}</Link></li>)}
+      {/* MODIFIED (tarangcat): text labels use a smaller font than emoji-only tabs. */}
+      {tagTabs.map(t => <li class={`${timeDarkness(tags[t], now)}${/[\p{L}\p{N}]/u.test(t) ? ' text-category' : ''}`}><Link to={`/tag/${encodeURIComponent(t)}`} class={t === tag && 'active'}>{t}</Link></li>)}
       </ul>
       <a href="#" class="left" oncreate={Nudge(30)}>&lsaquo;</a>
       <a href="#" class="right" oncreate={Nudge(-30)}>&rsaquo;</a>

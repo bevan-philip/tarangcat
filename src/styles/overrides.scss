@@ -4,6 +4,15 @@
 // `themed()` and `t()` come from the vendored stylesheet imported before this one.
 //
 
+#follows #tags li {
+  font-family: 'Inria Sans', sans-serif;
+  vertical-align: bottom;
+
+  a { line-height: 2rem; }
+
+  &.text-category { font-size: 1.1rem; }
+}
+
 //
 // The replacement emoji picker (see src/emoji.js).
 //

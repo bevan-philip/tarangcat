@@ -9,6 +9,7 @@
 
 import { addFollow, ApiError, editFollow, fetchArticle, fetchFollow, fetchSummary, fetchStarred, updateArticleState, listCategories, removeFollow } from '../data/tarang'
 import { loadSettings, saveSettings } from './settings.js'
+import { visibleCategories } from './categories.js'
 import { prepareFollowUpdate } from '../data/tarang'
 
 const HOUSE = '\u{1f3e0}'
@@ -40,6 +41,7 @@ let activeWrites = 0
 export default {
   state: {
     all: {},
+    summaryLoaded: false,
     settings: {},
     started: false,
     baseHref: '',
@@ -155,11 +157,17 @@ export default {
       }
     },
 
-    loadCategories: () => async (_state, actions) => {
+    loadCategories: ({ usedOnly = false } = {}) => async (state, actions) => {
       const gen = ++categoryGeneration
+      if (usedOnly && state.summaryLoaded) {
+        actions.set({ categories: visibleCategories(state.all).map(name => ({ pk: name, name })), categoryError: null })
+        return
+      }
       actions.set({ categories: null, categoryError: null })
       try {
-        const categories = await listCategories()
+        const categories = usedOnly
+          ? visibleCategories(await fetchSummary()).map(name => ({ pk: name, name }))
+          : await listCategories()
         if (gen === categoryGeneration) actions.set({ categories })
       } catch {
         if (gen === categoryGeneration) actions.set({ categoryError: 'Categories could not be loaded. You can still type a category.' })
@@ -200,7 +208,7 @@ export default {
         }
         const all = await fetchSummary()
         if (gen !== generation) return // superseded while this was in flight
-        actions.set({ all, refreshError: null })
+        actions.set({ all, summaryLoaded: true, refreshError: null })
       } catch (error) {
         if (gen !== generation) return
         console.error('tarangcat: refresh failed', error)

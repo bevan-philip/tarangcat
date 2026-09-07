@@ -1,10 +1,13 @@
 import { test, expect } from '@playwright/test'
 
 const categories = [{ pk: 7, name: 'News and essays' }, { pk: 8, name: '🌱' }]
+const summary = (used = categories) => ({ categories: [...used, { pk: 99, name: 'Empty category' }],
+  feeds: used.map(category => ({ pk: category.pk, name: category.name, url: `https://example.test/${category.pk}`,
+    category, category_id: category.pk, refresh_interval: 300, articles: [] })) })
 
 async function mockApi(page) {
-  await page.route('**/tarang/v1/summary', route => route.fulfill({ json: { categories, feeds: [] } }))
-  await page.route('**/tarang/v1/category', route => route.fulfill({ json: categories }))
+  await page.route('**/tarang/v1/summary', route => route.fulfill({ json: summary() }))
+  await page.route('**/tarang/v1/category', route => route.fulfill({ json: summary().categories }))
   await page.route('**/tarang/v1/category/*', route => route.fulfill({ status: 409 }))
   await page.route('**/tarang/v1/feed/42', route => route.fulfill({ json: {
     id: 42, feed: { pk: 42, name: 'Example', url: 'https://example.test/feed',
@@ -13,11 +16,15 @@ async function mockApi(page) {
 }
 
 for (const mode of ['add', 'edit/42']) {
-  test(`${mode} offers unused named and emoji categories and saves the selection`, async ({ page }) => {
+  test(`${mode} matches the tabs, excludes unused categories and saves the selection`, async ({ page }) => {
     await mockApi(page)
+    await page.goto('/')
+    const tabs = page.locator('#tags li a')
+    await expect(tabs).toHaveText(['🏠', 'News and essays', '🌱'])
+    const tabNames = await tabs.allTextContents()
     await page.goto(`/#!/${mode}`)
     const choices = page.getByRole('group', { name: 'Existing categories' })
-    await expect(choices.getByRole('button')).toHaveCount(2)
+    await expect(choices.getByRole('button')).toHaveText(tabNames)
     if (mode === 'add') await page.getByLabel('URL', { exact: true }).fill('https://example.test/feed')
     else await expect(choices.getByRole('button', { name: 'News and essays' })).toHaveAttribute('aria-pressed', 'true')
     await page.getByLabel('Title', { exact: true }).fill('Unsaved title')
@@ -32,7 +39,7 @@ for (const mode of ['add', 'edit/42']) {
     await page.getByLabel('Category', { exact: true }).fill('New category')
     await expect(emoji).toHaveAttribute('aria-pressed', 'false')
     await page.getByLabel('Category', { exact: true }).fill('')
-    await expect(choices.getByRole('button', { pressed: true })).toHaveCount(0)
+    await expect(choices.getByRole('button', { name: '🏠' })).toHaveAttribute('aria-pressed', 'true')
     await emoji.click()
     const endpoint = mode === 'add' ? '**/tarang/v1/feed' : '**/tarang/v1/feed/42'
     let saved
@@ -50,7 +57,7 @@ for (const mode of ['add', 'edit/42']) {
 test('category loading can fail and retry without losing the draft', async ({ page }) => {
   await mockApi(page)
   let fail = true
-  await page.route('**/tarang/v1/category', route => route.fulfill(fail ? { status: 503 } : { json: categories }))
+  await page.route('**/tarang/v1/summary', route => route.fulfill(fail ? { status: 503 } : { json: summary() }))
   await page.goto('/#!/add')
   await expect(page.getByRole('status')).toContainText('Categories could not be loaded')
   await page.getByLabel('Category', { exact: true }).fill('My category')
@@ -64,10 +71,10 @@ test('category choices wrap on a narrow screen in dark mode', async ({ page }, t
   await mockApi(page)
   await page.setViewportSize({ width: 390, height: 844 })
   await page.emulateMedia({ colorScheme: 'dark' })
-  await page.route('**/tarang/v1/category', route => route.fulfill({ json: [
+  await page.route('**/tarang/v1/summary', route => route.fulfill({ json: summary([
     ...categories, { pk: 9, name: 'Art, culture and writing from around the world' },
     { pk: 10, name: '📚 Reading' }, { pk: 11, name: 'Technology' },
-  ] }))
+  ]) }))
   await page.goto('/#!/add')
   const choices = page.getByRole('group', { name: 'Existing categories' })
   await choices.getByRole('button', { name: '🌱' }).click()
@@ -79,12 +86,33 @@ test('category choices wrap on a narrow screen in dark mode', async ({ page }, t
   await choices.screenshot({ path: testInfo.outputPath('categories-dark-mobile.png') })
 })
 
-test('an empty category list leaves the form available', async ({ page }) => {
+test('an empty feed list offers only Home and leaves the form available', async ({ page }) => {
   await mockApi(page)
-  await page.route('**/tarang/v1/category', route => route.fulfill({ json: [] }))
+  await page.route('**/tarang/v1/summary', route => route.fulfill({ json: summary([]) }))
   await page.goto('/#!/add')
   await expect(page.getByRole('status')).toHaveCount(0)
-  await expect(page.getByRole('group', { name: 'Existing categories' })).toHaveCount(0)
+  const choices = page.getByRole('group', { name: 'Existing categories' })
+  await expect(choices.getByRole('button')).toHaveText(['🏠'])
   await page.getByLabel('Category', { exact: true }).fill('First category')
   await expect(page.getByLabel('Category', { exact: true })).toHaveValue('First category')
+  await choices.getByRole('button', { name: '🏠' }).click()
+  await expect(page.getByLabel('Category', { exact: true })).toHaveValue('')
 })
+
+for (const mode of ['add', 'edit/42']) {
+  test(`${mode} reuses loaded tab categories without another summary request`, async ({ page }) => {
+    await mockApi(page)
+    await page.goto('/')
+    await expect(page.locator('#tags li a')).toHaveText(['🏠', 'News and essays', '🌱'])
+    let requests = 0
+    await page.route('**/tarang/v1/summary', route => {
+      requests++
+      return route.abort()
+    })
+    await page.evaluate(mode => { window.location.hash = `!/${mode}` }, mode)
+    await expect(page.getByRole('group', { name: 'Existing categories' }).getByRole('button'))
+      .toHaveText(['🏠', 'News and essays', '🌱'])
+    await expect(page.getByRole('status')).toHaveCount(0)
+    expect(requests).toBe(0)
+  })
+}

@@ -11,14 +11,11 @@ import u from '@kickscondor/umbrellajs'
 import { images, svg, webp } from '#app/assets.js'
 import { ReaderPane } from '#app/reader/pane.js'
 import { BulkFeeds } from '#app/bulk-feeds.js'
+import { visibleCategories } from '#app/store/categories.js'
 import { ArticleLink, StarButton, ArticleError, StarredArticles } from '#app/reader/article-controls.js'
 
 const CAN_ARCHIVE = false
 const IS_WEBEXT = false
-
-// MODIFIED (tarangcat): keep category choices and tabs in the same order, home first.
-const compareCategories = (a, b) => a === b ? 0
-  : a === house ? -1 : b === house ? 1 : a < b ? -1 : 1
 
 
 const FormFreeze = (e) => {
@@ -115,9 +112,9 @@ const FollowForm = (match, setup, isNew) => ({follows}, actions) => {
     actions.follows.set({editing: follow})
   })
 
-  // MODIFIED (tarangcat): load all existing categories, including unused ones.
+  // MODIFIED (tarangcat): offer the same categories as the tab bar.
   return follow && <form class="follow" onsubmit={FormFreeze}
-    oncreate={() => actions.follows.loadCategories()}
+    oncreate={() => actions.follows.loadCategories({ usedOnly: true })}
     ondestroy={() => { picker.hidePicker(); actions.follows.closeCategories() }}>
     {isNew &&
       <div>
@@ -151,16 +148,16 @@ const FollowForm = (match, setup, isNew) => ({follows}, actions) => {
         picker.pickerVisible ? picker.hidePicker() : picker.showPicker(e)
       }}>&#128513;</a>
       {follows.categories?.length > 0 && <div class="category-choices" role="group" aria-label="Existing categories">
-        {follows.categories.slice().sort((a, b) => compareCategories(a.name, b.name)).map(category => <button type="button" key={category.pk}
+        {follows.categories.map(category => <button type="button" key={category.pk}
           class={/[\p{L}\p{N}]/u.test(category.name) ? 'text-category' : 'emoji-category'}
-          aria-pressed={(follow.category || '').trim() === category.name ? 'true' : 'false'}
+          aria-pressed={((follow.category || '').trim() || house) === category.name ? 'true' : 'false'}
           onclick={() => {
-            follow.category = category.name
+            follow.category = category.name === house ? '' : category.name
             actions.follows.set({editing: follow})
           }}>{category.name}</button>)}
       </div>}
       {follows.categoryError ? <p class="note" role="status">{follows.categoryError}{' '}
-        <button type="button" onclick={() => actions.follows.loadCategories()}>Try again</button>
+        <button type="button" onclick={() => actions.follows.loadCategories({ usedOnly: true })}>Try again</button>
       </p> : follows.categories === null && <p class="note" role="status">Loading categories…</p>}
       <p class="note">Choose an existing category or type a new one.</p>
       <p class="note">(Optional. If left blank, this follow appears on the main page.)</p>
@@ -382,7 +379,7 @@ const ListFollow = ({ location, match }) => ({follows}, actions) => {
   let imp = Number(match.params.importance ?? (follows.bulk?.category === tag ? follows.bulk.frequency : (impa.length > 0 ? Math.min(...impa) : 0)))
   const bulk = follows.bulk?.category === tag && follows.bulk.frequency === imp ? follows.bulk : null
   viewable = viewable.filter(follow => (follow.importance == imp))
-  let tagTabs = [...new Set([house, ...Object.keys(tags)])].sort(compareCategories)
+  let tagTabs = visibleCategories(follows.all)
   let addLink = '/add?tag=' + encodeURIComponent(tag) + '&importance=' + imp
   u('a.pink').attr('href', (location.hashRouting ? '#!' : '') + addLink)
 

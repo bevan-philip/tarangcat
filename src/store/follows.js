@@ -290,7 +290,11 @@ export default {
         try {
           if (!follow.id) {
             const id = await addFollow(follow)
-            actions.location.go(tagPath({ ...follow, id }))
+            // Tarang resolves discovery URLs and supplies the automatic title and
+            // website URL during creation. Read the saved feed before navigating so
+            // the first rendered view uses that server state.
+            const saved = await fetchFollow(id)
+            actions.location.go(tagPath(saved))
             return
           }
 

@@ -43,6 +43,12 @@ for (const mode of ['add', 'edit/42']) {
     await emoji.click()
     const endpoint = mode === 'add' ? '**/tarang/v1/feed' : '**/tarang/v1/feed/42'
     let saved
+    if (mode === 'add') {
+      await page.route('**/tarang/v1/feed/42', route => route.fulfill({ json: {
+        id: 42, feed: { pk: 42, name: 'Unsaved title', url: 'https://example.test/feed',
+          category_id: 8, refresh_interval: 300 }, articles: []
+      } }))
+    }
     await page.route(endpoint, route => {
       saved = route.request().postDataJSON()
       return route.fulfill({ json: { id: 42 } })

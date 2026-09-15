@@ -38,6 +38,7 @@ export interface WireFeed {
   pk: number
   name: string
   url: string
+  display_url: string
   metadata: string
   refresh_interval: number
   last_refresh: number | null
@@ -74,7 +75,9 @@ export interface Post {
 
 export interface Follow {
   id: string
+  /** Human-facing website URL; falls back to `feed` when Tarang has none. */
   url: string
+  /** Subscription URL used by Tarang to fetch the feed. */
   feed: string
   title: string
   /** Absent means the follow appears under Fraidycat's home category. */

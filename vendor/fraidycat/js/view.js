@@ -121,9 +121,17 @@ const FollowForm = (match, setup, isNew) => ({follows}, actions) => {
         <label for="url">URL</label>
         <input type="text" id="url" name="url" value={follow.url} autocorrect="off" autocapitalize="none"
           oninput={e => follow.url = e.target.value} autofocus />
-        {/* MODIFIED (tarangcat): the form accepts a feed URL. */}
-        <p class="note">(The feed's own URL, not the site's homepage. For sites with no
-          feed, see <a href="https://rss.app/">RSS.app</a> or <a href="https://rsshub.app/">RSSHub</a>.)</p>
+        <p class="note">(Paste a feed URL, website homepage, supported YouTube URL, or Bluesky
+          profile. Tarang discovers the feed automatically.)</p>
+      </div>}
+
+    {!isNew &&
+      <div>
+        <label for="website-url">Website URL</label>
+        <input type="text" id="website-url" name="website-url" value={follow.url}
+          autocorrect="off" autocapitalize="none"
+          oninput={e => follow.url = e.target.value} />
+        <p class="note">(Leave empty to use the subscription URL.)</p>
       </div>}
 
     <div>
@@ -167,7 +175,8 @@ const FollowForm = (match, setup, isNew) => ({follows}, actions) => {
       <label for="title" class="optional">Title</label>
       <input type="text" id="title" value={follow.title}
         oninput={e => follow.title = e.target.value} />
-      <p class="note">(Leave empty to use <em>{follow.actualTitle || "the title loaded from the site"}</em>.)</p>
+      <p class="note">{isNew ? '(Leave empty to use the title detected by Tarang.)' :
+        '(Leave empty to keep the current title.)'}</p>
     </div>
 
     {CAN_ARCHIVE &&
@@ -198,7 +207,7 @@ const EditFollowById = ({ match }) => ({follows}, actions) => {
     oncreate={() => actions.follows.loadEditing(id)}
     ondestroy={() => actions.follows.closeEditing(id)}>
     <h2>Edit a Follow</h2>
-    {editing ? <div><p>URL: {editing.url}</p>{FollowForm(match, false, false)}</div>
+    {editing ? <div><p>Subscription URL: <code>{editing.feed}</code></p>{FollowForm(match, false, false)}</div>
       : error ? <div><p role="alert">{error}</p><button onclick={() => actions.follows.loadEditing(id)}>Try again</button></div>
       : <p role="status">Loading feed…</p>}
   </div>
@@ -214,11 +223,8 @@ const AddFollow = ({ match, setup }) => ({follows}) => {
   return <div id="add-feed" key="add-feed">
     <h2>Add a Follow</h2>
     <p>What feed do you want to follow?</p>
-    {/* MODIFIED (tarangcat): Tarang fetches the URL you give it directly as a feed — it
-        does not discover a feed from a site's homepage the way Miniflux does. */}
-    <p class="note"><em>Paste the feed's own URL (RSS, Atom or JSON Feed) &mdash; not the
-      site's homepage. Most sites publish theirs at a path like <code>/feed</code> or{' '}
-      <code>/rss.xml</code>.</em></p>
+    <p class="note"><em>Paste a feed URL, website homepage, supported YouTube URL, or Bluesky
+      profile. Tarang discovers the feed automatically.</em></p>
     {FollowForm(match, setup, true)}
   </div>
 }
@@ -433,9 +439,9 @@ const ListFollow = ({ location, match }) => ({follows}, actions) => {
           let lastPostAt = lastPostTime(follow, sortPosts), tags = []
           let ago = timeAgo(lastPostAt, now)
           let dk = timeDarkness(lastPostAt, now)
-          // MODIFIED (tarangcat): the follow's title always links to the site. The reader
-          // route (/view/:entryId) is reached from individual posts, below.
-          let linkUrl = follow.url
+          // MODIFIED (tarangcat): the follow's title always links to the website URL. The
+          // reader route (/view/:entryId) is reached from individual posts, below.
+          let linkUrl = follow.url || follow.feed
           let id = `follow-${follow.id}`
           let target = follows.settings['mode-tab'] || ""
           return <li key={id} class={`${dk || 'age-X'}${bulk ? ' feed-selectable' : ''}${bulk?.selected[follow.id] ? ' feed-selected' : ''}`}>

@@ -98,7 +98,7 @@ function toPost(article: WireFeed['articles'][number]): Post {
 function toFollow(feed: WireFeed): Follow {
   const follow: Follow = {
     id: String(feed.pk),
-    url: feed.url,
+    url: feed.display_url || feed.url,
     feed: feed.url,
     title: feed.name,
     importance: importanceForInterval(feed.refresh_interval),
@@ -173,7 +173,8 @@ async function categoryIdForName(name: string | undefined): Promise<number | nul
 }
 
 export interface FollowDraft {
-  url: string
+  /** Website URL when editing; subscription/input URL when adding. */
+  url?: string
   title?: string
   category?: string
   importance?: number
@@ -181,13 +182,15 @@ export interface FollowDraft {
 
 /** New follow: resolve the optional category, then include it in the feed POST. */
 export async function addFollow(draft: FollowDraft): Promise<string> {
-  const name = (draft.title || '').trim() || draft.url
+  const url = (draft.url ?? '').trim()
+  const title = (draft.title ?? '').trim()
   const categoryId = await categoryIdForName(draft.category)
   const created = await apiJson<{ id: number }>(
     '/tarang/v1/feed',
     jsonBody('POST', {
-      name,
-      url: draft.url.trim(),
+      ...(title ? { name: title } : {}),
+      url,
+      discovery: true,
       refresh_interval: intervalForImportance(draft.importance ?? 0),
       category_id: categoryId
     })
@@ -211,6 +214,7 @@ export async function editFollow(
     `/tarang/v1/feed/${feedId}`,
     jsonBody('PATCH', {
       ...(trimmedTitle ? { name: trimmedTitle } : {}),
+      ...(draft.url === undefined ? {} : { display_url: draft.url.trim() }),
       refresh_interval: intervalForImportance(draft.importance ?? 0),
       category_id: categoryId
     })

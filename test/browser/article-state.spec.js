@@ -31,6 +31,19 @@ async function mockApi(page) {
   return api
 }
 
+test('a fresh client renders backend read state in light and dark themes', async ({ page }) => {
+  const api = await mockApi(page)
+  api.posts[0].is_read = true
+  for (const colorScheme of ['light', 'dark']) {
+    await page.emulateMedia({ colorScheme })
+    await page.goto('/')
+    const link = page.getByRole('link', { name: 'Article 1', exact: true })
+    await expect(link).toHaveClass(/is-read/)
+    await expect(link).toHaveCSS('color', colorScheme === 'dark' ? 'rgb(170, 170, 170)' : 'rgb(170, 136, 68)')
+  }
+  expect(api.writes).toEqual([])
+})
+
 test('read state follows Tarang, survives reload, and refreshes changes from another client', async ({ page }) => {
   const api = await mockApi(page)
   await page.goto('/')

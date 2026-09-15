@@ -98,6 +98,7 @@ test('fetchSummary reads the current summary endpoint and converts an unassigned
         pk: 42,
         name: 'Example',
         url: 'https://example.test/feed',
+        display_url: 'https://example.test/site',
         category_id: null,
         category: null,
         metadata: '{}',
@@ -113,6 +114,8 @@ test('fetchSummary reads the current summary endpoint and converts an unassigned
   assert.equal(requestedUrl, '/tarang/v1/summary')
   assert.equal(follows['42'].category, undefined)
   assert.equal(follows['42'].title, 'Example')
+  assert.equal(follows['42'].url, 'https://example.test/site')
+  assert.equal(follows['42'].feed, 'https://example.test/feed')
   assert.deepEqual(follows['42'].posts, [])
 })
 
@@ -126,7 +129,27 @@ test('addFollow sends null for an unassigned category', async () => {
   assert.equal(await adapter.addFollow({ url: 'https://example.test/feed' }), '42')
   assert.equal(request.url, '/tarang/v1/feed')
   assert.equal(request.init.method, 'POST')
-  assert.equal(requestBody(request.init).category_id, null)
+  assert.deepEqual(requestBody(request.init), {
+    url: 'https://example.test/feed',
+    discovery: true,
+    refresh_interval: 300,
+    category_id: null
+  })
+})
+
+test('addFollow preserves an explicit title and omits blank titles', async () => {
+  const requests = []
+  globalThis.fetch = async (url, init) => {
+    requests.push({ url, init })
+    return jsonResponse({ id: requests.length })
+  }
+
+  await adapter.addFollow({ url: 'https://example.test/feed', title: '  Custom title  ' })
+  await adapter.addFollow({ url: 'https://example.test/site', title: ' \t ' })
+
+  assert.equal(requestBody(requests[0].init).name, 'Custom title')
+  assert.equal('name' in requestBody(requests[1].init), false)
+  assert.equal(requestBody(requests[1].init).discovery, true)
 })
 
 test('fetchSummary converts previews without full content or GUIDs', async () => {
@@ -220,12 +243,14 @@ test('fetchFollow uses feed metadata and category lookup without the summary', a
   globalThis.fetch = async url => {
     requests.push(url)
     return jsonResponse(url.endsWith('/category') ? [{ pk: 7, name: 'News' }] : {
-      id: 42, feed: { pk: 42, name: 'Fresh name', url: 'https://example.test/feed', category_id: 7,
+      id: 42, feed: { pk: 42, name: 'Fresh name', url: 'https://example.test/feed', display_url: 'https://example.test/site', category_id: 7,
         refresh_interval: 21600 }, articles: [{ pk: 9 }] })
   }
   const follow = await adapter.fetchFollow('42')
   assert.deepEqual(requests, ['/tarang/v1/feed/42', '/tarang/v1/category'])
   assert.equal(follow.title, 'Fresh name')
+  assert.equal(follow.url, 'https://example.test/site')
+  assert.equal(follow.feed, 'https://example.test/feed')
   assert.equal(follow.category, 'News')
   assert.equal(follow.importance, 7)
   assert.deepEqual(follow.posts, [])
@@ -238,6 +263,25 @@ test('fetchFollow skips category requests for unassigned feeds', async () => {
     return jsonResponse({ id: 42, feed: { pk: 42, name: 'Example', url: 'https://example.test/feed',
       category_id: null, refresh_interval: 300 }, articles: [] })
   }
-  assert.equal((await adapter.fetchFollow('42')).category, undefined)
+  const follow = await adapter.fetchFollow('42')
+  assert.equal(follow.category, undefined)
+  assert.equal(follow.url, 'https://example.test/feed')
   assert.deepEqual(requests, ['/tarang/v1/feed/42'])
+})
+
+test('editFollow updates, clears, and can omit the website URL independently', async () => {
+  const requests = []
+  globalThis.fetch = async (url, init) => {
+    requests.push({ url, init })
+    return jsonResponse({})
+  }
+
+  await adapter.editFollow('42', { url: '  https://example.test/site  ', title: 'Updated', importance: 1 })
+  await adapter.editFollow('42', { url: '   ', importance: 0 })
+  await adapter.editFollow('42', { importance: 7 })
+
+  assert.equal(requestBody(requests[0].init).display_url, 'https://example.test/site')
+  assert.equal(requestBody(requests[0].init).name, 'Updated')
+  assert.equal(requestBody(requests[1].init).display_url, '')
+  assert.equal('display_url' in requestBody(requests[2].init), false)
 })

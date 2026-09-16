@@ -1,6 +1,8 @@
 # tarangcat
 
-Tarangcat is a web RSS client that uses Fraidycat's interface and Tarang's API. It groups feeds by category and importance, and sorts them by recent activity. Tarang stores feeds and articles; the browser stores display preferences.
+tarangcat is a [vibe-coded](https://simonwillison.net/2025/Mar/19/vibe-coding/) modification of [Fraidycat v1.1](https://github.com/kickscondor/fraidycat) to use [Tarang](https://github.com/bevan-philip/tarang) as the backend, with some additional features thrown on top to make it more convenient for me to use.
+
+Everything here downwards is all LLM-speak. You've been warned.
 
 ## Documentation
 

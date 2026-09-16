@@ -13,6 +13,7 @@ import { ReaderPane } from '#app/reader/pane.js'
 import { BulkFeeds } from '#app/bulk-feeds.js'
 import { visibleCategories } from '#app/store/categories.js'
 import { ArticleLink, StarButton, ArticleError, StarredArticles } from '#app/reader/article-controls.js'
+import { articleLabel } from '#app/reader/content.js'
 
 const CAN_ARCHIVE = false
 const IS_WEBEXT = false
@@ -474,14 +475,15 @@ const ListFollow = ({ location, match }) => ({follows}, actions) => {
                 <ol class="title">{(showReposts ? follow.posts : follow.posts.filter(x => !x.author || x.author === follow.author)).
                   slice(0, follow.limit || 10).map(f => {
                     let postAge = timeAgo(f[sortPosts], now)
+                    let label = articleLabel(f)
                     return <li class={timeDarkness(f[sortPosts], now)}>
                       {f.author && f.author !== follow.author && <span class="author">{f.author}</span>}
-                      {f.url.startsWith('id:') ? <span class="txt">{TitleTrunc(f.title)}</span> :
+                      {f.url.startsWith('id:') ? <span class="txt">{TitleTrunc(label)}</span> :
                         (follow.fetchesContent && f.id ?
                           /* MODIFIED (tarangcat): ordinary activation opens the reader;
                              native new-tab and copy-link actions use the original URL. */
-                          <ArticleLink post={f}>{TitleTrunc(f.title)}</ArticleLink> :
-                          <a href={f.url} target={target}>{TitleTrunc(f.title)}</a>)}
+                          <ArticleLink post={f}>{TitleTrunc(label)}</ArticleLink> :
+                          <a href={f.url} target={target}>{TitleTrunc(label)}</a>)}
                       {!f.index && <span class="ago">{timeAgo(f[sortPosts], now)}</span>}
                       <StarButton post={f} />
                       <ArticleError id={f.id} />

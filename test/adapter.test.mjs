@@ -69,7 +69,7 @@ test('starred previews use article_id rather than feed_id and preserve server st
   const [post] = await adapter.fetchStarred()
   assert.equal(post.id, '99')
   assert.equal(post.feedTitle, 'Notes')
-  assert.equal(post.title, '(untitled)')
+  assert.equal(post.title, '')
   assert.equal(post.publishedAt.getTime(), 123000)
   assert.equal(post.isRead, true)
   assert.equal(post.isStarred, true)
@@ -153,7 +153,7 @@ test('addFollow preserves an explicit title and omits blank titles', async () =>
 })
 
 test('fetchSummary converts previews without full content or GUIDs', async () => {
-  globalThis.fetch = async () => jsonResponse({ categories: [], feeds: [{
+  globalThis.fetch = async url => url.includes('/article/') ? jsonResponse({}, 404) : jsonResponse({ categories: [], feeds: [{
     pk: 42, name: 'Example', url: 'https://example.test/feed', category: null,
     refresh_interval: 300, articles: [{
       pk: 9, url: 'https://example.test/article', title: null,
@@ -169,7 +169,7 @@ test('fetchSummary converts previews without full content or GUIDs', async () =>
   assert.equal(follows['42'].fetchesContent, true)
   assert.equal(full.content, '')
   assert.equal(full.summary, '<p>Summary</p>')
-  assert.equal(full.title, '(untitled)')
+  assert.equal(full.title, '')
   assert.equal(full.publishedAt.getTime(), 1700000000000)
   assert.equal(empty.content, '')
   assert.equal(empty.summary, null)
@@ -267,6 +267,34 @@ test('fetchFollow skips category requests for unassigned feeds', async () => {
   assert.equal(follow.category, undefined)
   assert.equal(follow.url, 'https://example.test/feed')
   assert.deepEqual(requests, ['/tarang/v1/feed/42'])
+})
+
+test('titleless content fallback fetches only displayed previews that lack a summary', async () => {
+  const articles = Array.from({ length: 12 }, (_, index) => ({ pk: index + 1, feed: 42,
+    title: null, url: `https://example.test/${index}`, summary: null,
+    published_at: 1700000000 - index, retrieved_at: 1700000000,
+    is_read: false, is_starred: false }))
+  articles[0].title = 'Source title'
+  articles[1].summary = '<p>Existing summary</p>'
+  articles[2].title = '  '
+  articles[2].summary = '  '
+  const details = []
+  globalThis.fetch = async url => {
+    if (url.endsWith('/summary')) return jsonResponse({ categories: [], feeds: [{
+      pk: 42, name: 'Example', url: 'https://example.test/feed', category: null,
+      refresh_interval: 300, articles }] })
+    const id = Number(url.split('/').pop())
+    details.push(id)
+    return id === 4 ? jsonResponse({}, 503)
+      : jsonResponse({ ...articles[id - 1], content: '<p>Cached content</p>' })
+  }
+  const posts = (await adapter.fetchSummary())['42'].posts
+  assert.deepEqual(details.sort((a, b) => a - b), [3, 4, 5, 6, 7, 8, 9, 10])
+  assert.equal(posts[0].title, 'Source title')
+  assert.equal(posts[2].title, '')
+  assert.equal(posts[2].content, '<p>Cached content</p>')
+  assert.equal(posts[3].content, '')
+  assert.equal(posts[10].content, '')
 })
 
 test('editFollow updates, clears, and can omit the website URL independently', async () => {

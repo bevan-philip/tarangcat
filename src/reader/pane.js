@@ -59,7 +59,7 @@ export const ReaderPane = ({ match }) => ({ follows }, actions) => {
     {selected ? <div class="reader-page">
       <header class="reader-heading">
         <p class="reader-source">{selected.title}</p>
-        <h1 tabindex="-1">{selected.post.title}</h1>
+        <h1 tabindex="-1">{selected.post.title || '(untitled)'}</h1>
         <div class="reader-meta">
           <StarButton post={selected.post} />
           {Number.isFinite(Number(selected.post.publishedAt)) && <time datetime={selected.post.publishedAt.toISOString()}>

@@ -84,7 +84,7 @@ function toPost(article: WireFeed['articles'][number]): Post {
     id: String(article.pk),
     isRead: article.is_read === true,
     isStarred: article.is_starred === true,
-    title: article.title || '(untitled)',
+    title: article.title?.trim() || '',
     url: article.url,
     content: '',
     summary: article.summary ?? null,
@@ -117,6 +117,18 @@ export async function fetchSummary(): Promise<Record<string, Follow>> {
   const wire = await apiJson<WireSummary>('/tarang/v1/summary')
   const follows: Record<string, Follow> = {}
   for (const feed of wire.feeds) follows[String(feed.pk)] = toFollow(feed)
+  // Only fetch missing fallback text for articles the feed list can display.
+  await Promise.all(Object.values(follows).flatMap(follow => follow.posts.slice(0, 10)
+    .filter(post => !post.title && !post.summary?.trim())
+    .map(async post => {
+      try {
+        const { post: full } = await fetchArticle(post.id)
+        post.content = full.content
+        post.summary = full.summary
+      } catch {
+        // An unavailable article must not hide the rest of the feed.
+      }
+    })))
   return follows
 }
 

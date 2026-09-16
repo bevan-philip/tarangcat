@@ -74,6 +74,22 @@ export function articleFragment(html, base) {
   return fragment
 }
 
+export function articleLabel(post) {
+  return post.title || articleExcerpt(post) || '(untitled)'
+}
+
+export function articleExcerpt(post) {
+  for (const html of [post.summary, post.content]) {
+    const fragment = DOMPurify.sanitize(html || '', { RETURN_DOM_FRAGMENT: true, FORBID_TAGS: ['style'] })
+    for (const element of fragment.querySelectorAll('p, div, br, li, h1, h2, h3, h4, h5, h6, blockquote, pre, td, th')) {
+      element.append(document.createTextNode(' '))
+    }
+    const text = fragment.textContent.replace(/\s+/g, ' ').trim()
+    if (text) return text.length > 160 ? `${text.slice(0, 159).trimEnd()}…` : text
+  }
+  return ''
+}
+
 const rendered = new WeakMap()
 export function renderArticle(element, post) {
   const signature = JSON.stringify([post.content, post.summary, post.url])

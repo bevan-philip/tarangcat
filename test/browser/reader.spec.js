@@ -55,6 +55,36 @@ async function openReader(page) {
   await expect(page.getByRole('heading', { name: 'Article 1', exact: true })).toBeVisible()
 }
 
+test('titleless feed entries use safe, bounded summary or content excerpts', async ({ page }) => {
+  const details = []
+  page.on('request', request => {
+    if (request.method() === 'GET' && request.url().includes('/tarang/v1/article/')) details.push(request.url().split('/').pop())
+  })
+  await mockApi(page, () => summary([
+    article(1, { title: null, summary: '<p>Summary &amp; <strong>formatting</strong></p><p>Second paragraph.</p><script>window.injected = true</script>' }),
+    article(2, { title: ' \t ', summary: null, content: '<p>Content-only fallback.</p>' }),
+    article(3, { title: '', summary: '<p>' + 'Long excerpt '.repeat(30) + '</p>' }),
+    article(4, { title: null, summary: null, content: '' }),
+    article(5, { summary: '<p>Do not replace a supplied title.</p>' }),
+  ]))
+  await page.goto('/#!/tag/Outdoors?importance=1')
+  const links = page.locator('#follows .article-link')
+  const link = id => page.locator(`#follows .article-link[href="https://example.test/posts/${id}"]`)
+  await expect(links).toHaveCount(5)
+  await expect(link(1)).toHaveText('Summary & formatting Second paragraph.')
+  await expect(link(2)).toHaveText('Content-only fallback.')
+  expect((await link(3).textContent()).length).toBeLessThanOrEqual(160)
+  await expect(link(3)).toContainText('…')
+  await expect(link(4)).toHaveText('(untitled)')
+  await expect(link(5)).toHaveText('Article 5')
+  await expect(links.locator('strong, script, p')).toHaveCount(0)
+  expect(await page.evaluate(() => window.injected)).toBeUndefined()
+  expect(details.sort()).toEqual(['2', '4'])
+  await link(2).click()
+  await expect(page).toHaveURL(/#!\/view\/2$/)
+  await expect(page.locator('.reader-content')).toContainText('Content-only fallback.')
+})
+
 test('opens cached content, preserves formatting, and returns to the same category', async ({ page }) => {
   const errors = []
   page.on('pageerror', error => errors.push(error.message))

@@ -1,8 +1,8 @@
 import { h } from 'hyperapp'
-import { safeUrl } from './content.js'
+import { articleLabel, safeUrl } from './content.js'
 
 export const StarButton = ({ post }) => ({ follows }, actions) => <button type="button"
-  class="article-star" aria-label={`${post.isStarred ? 'Unstar' : 'Star'} ${post.title}`}
+  class="article-star" aria-label={`${post.isStarred ? 'Unstar' : 'Star'} ${articleLabel(post)}`}
   title={post.isStarred ? 'Unstar article' : 'Star article'}
   aria-pressed={post.isStarred ? 'true' : 'false'} disabled={!!follows.articlePending[post.id]}
   onclick={() => actions.follows.saveArticleState({ id: post.id, flags: { is_starred: !post.isStarred } })}>
@@ -30,7 +30,7 @@ export const ArticleLink = ({ post, back }, children) => (_state, actions) => {
       event.preventDefault()
       actions.follows.set({ readerReturn: back || null })
       actions.location.go(`/view/${post.id}`)
-    }}>{children.length ? children : post.title}</a>
+    }}>{children.length ? children : articleLabel(post)}</a>
 }
 
 export const StarredArticles = () => ({ follows }, actions) => <div id="starred" key="starred">

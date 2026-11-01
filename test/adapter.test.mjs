@@ -152,23 +152,6 @@ test('the Home category is reused when it already exists', async () => {
   assert.equal(requestBody(requests.at(-1).init).category_id, 3)
 })
 
-test('assignHomeCategory moves uncategorised feeds and reports the ones that moved', async () => {
-  const calls = []
-  globalThis.fetch = async (url, init) => {
-    calls.push({ url, init })
-    if (init.method === 'POST') return jsonResponse({ id: 3 })
-    return url.endsWith('/2') ? jsonResponse({}, 503) : new Response(null, { status: 204 })
-  }
-
-  assert.deepEqual(await adapter.assignHomeCategory(['1', '2', '4']), ['1', '4'])
-  assert.deepEqual(calls.map(({ url }) => url), [
-    '/tarang/v1/category/%F0%9F%8F%A0', '/tarang/v1/feed/1', '/tarang/v1/feed/2', '/tarang/v1/feed/4'
-  ])
-  for (const call of calls.slice(1)) assert.deepEqual(requestBody(call.init), { category_id: 3 })
-  assert.deepEqual(await adapter.assignHomeCategory([]), [])
-  assert.equal(calls.length, 4)
-})
-
 test('addFollow preserves an explicit title and omits blank titles', async () => {
   const requests = []
   globalThis.fetch = async (url, init) => {

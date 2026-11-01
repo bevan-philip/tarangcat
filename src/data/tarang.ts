@@ -253,22 +253,3 @@ export async function prepareFollowUpdate(change: { category?: string, importanc
     await apiFetch(`/tarang/v1/feed/${encodeURIComponent(id)}`, jsonBody('PATCH', body))
   }
 }
-
-/**
- * Move feeds without a category into the explicit Home category. Returns the ids that
- * moved; a feed that fails is left for the next attempt without blocking the others.
- */
-export async function assignHomeCategory(ids: string[]): Promise<string[]> {
-  if (!ids.length) return []
-  const update = await prepareFollowUpdate({ category: HOME_CATEGORY })
-  const moved: string[] = []
-  for (const id of ids) {
-    try {
-      await update(id)
-      moved.push(id)
-    } catch {
-      // Still displayed on the home tab; left for a later attempt.
-    }
-  }
-  return moved
-}

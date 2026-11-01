@@ -152,3 +152,57 @@ test('feeds without a category are moved into the explicit Home category', async
   await expect(page.getByRole('link', { name: 'Loose' })).toBeVisible()
   expect(patches).toHaveLength(1)
 })
+
+async function mockHomeMove(page, feeds) {
+  const home = { pk: 3, name: '🏠' }
+  const all = [...categories, home]
+  const patches = []
+  const control = {}
+  control.held = new Promise(resolve => { control.release = resolve })
+  await page.route('**/tarang/v1/summary', route => route.fulfill({ json: { categories: all, feeds } }))
+  await page.route('**/tarang/v1/category', route => route.fulfill({ json: all }))
+  await page.route('**/tarang/v1/category/*', route => route.fulfill({ status: 409 }))
+  await page.route('**/tarang/v1/starred', route => route.fulfill({ json: [{ article_id: 9, feed_id: 1, feed_name: 'Loose',
+    title: 'Saved article', url: 'https://example.test/9', summary: null, published_at: 1788566400,
+    retrieved_at: 1788566400, is_read: true, is_starred: true }] }))
+  await page.route('**/tarang/v1/feed/*', async route => {
+    const id = Number(route.request().url().split('/').pop())
+    const body = route.request().postDataJSON()
+    patches.push({ id, body })
+    if (id === 1 && body.category_id === home.pk) await control.held
+    const category = all.find(category => category.pk === body.category_id)
+    feeds.splice(0, feeds.length, ...feeds.map(feed => feed.pk === id ? { ...feed, category, category_id: category.pk } : feed))
+    return route.fulfill({ status: 204 })
+  })
+  return { patches, control }
+}
+
+const looseFeeds = () => [1, 2].map(pk => ({ pk, name: pk === 1 ? 'Loose' : 'Also loose', url: `https://example.test/${pk}`,
+  category: null, category_id: null, refresh_interval: 300, articles: [] }))
+
+test('a feed moved by the user during the Home move keeps the user’s category', async ({ page }) => {
+  const { patches, control } = await mockHomeMove(page, looseFeeds())
+  await page.goto('/')
+  await expect.poll(() => patches.length).toBe(1)
+  await page.getByRole('button', { name: 'Manage feeds' }).click()
+  await page.getByRole('checkbox', { name: /Also loose/ }).check()
+  await page.getByLabel('Action', { exact: true }).selectOption('category')
+  await page.getByLabel('Destination category').fill('News and essays')
+  await page.getByRole('button', { name: 'Apply to selected feeds' }).click()
+  control.release()
+  await expect(page.getByRole('status')).toContainText('1 of 1 feeds updated')
+  await page.locator('#tags').getByRole('link', { name: 'News and essays' }).click()
+  await expect(page.getByRole('link', { name: 'Also loose' })).toBeVisible()
+  expect(patches).toEqual([{ id: 1, body: { category_id: 3 } }, { id: 2, body: { category_id: 7 } }])
+})
+
+test('a route opened during the Home move loads when the move finishes', async ({ page }) => {
+  const { patches, control } = await mockHomeMove(page, looseFeeds())
+  await page.goto('/')
+  await expect.poll(() => patches.length).toBe(1)
+  await page.getByRole('link', { name: 'Starred articles' }).click()
+  await expect(page.getByText('Loading starred articles')).toBeVisible()
+  control.release()
+  await expect(page.getByText('Saved article')).toBeVisible()
+  expect(patches).toEqual([1, 2].map(id => ({ id, body: { category_id: 3 } })))
+})

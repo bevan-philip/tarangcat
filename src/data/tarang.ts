@@ -114,8 +114,8 @@ function toFollow(feed: WireFeed): Follow {
     // "nothing to draw" and renders no sparkline.
     activity: []
   }
-  // Absent for feeds Tarang has no category for yet (for example, ones added by another
-  // reader): the view still shows them on the home tab until they are moved there.
+  // Absent for feeds with no Tarang category (saved by earlier versions or another
+  // reader): the view shows them on the home tab.
   if (feed.category) follow.category = feed.category.name
   return follow
 }

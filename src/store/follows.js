@@ -35,18 +35,6 @@ let categoryGeneration = 0
 const articleWrites = new Map()
 const articleResults = new Map()
 let activeWrites = 0
-// Feeds without a category (from before Home was explicit, or added by another reader)
-// are moved into the Home category once per page load. A feed the user moves, edits or
-// deletes meanwhile is skipped, and the user's write waits for any in-flight Home write
-// to the same feeds so it lands last.
-let homeAssigned = false
-let homeWrite = null
-const userCategoryWrites = new Set()
-
-async function claimCategoryWrites(ids) {
-  for (const id of ids) userCategoryWrites.add(String(id))
-  try { await homeWrite } catch { /* The user's write supersedes it either way. */ }
-}
 
 export default {
   state: {
@@ -91,7 +79,6 @@ export default {
       ++activeWrites
       const failed = []
       try {
-        if (bulk.operation !== 'importance') await claimCategoryWrites(ids)
         const change = bulk.operation === 'category' ? { category: bulk.destination.trim() || HOUSE } : { importance: bulk.importance }
         const write = bulk.operation === 'delete' ? removeFollow : await prepareFollowUpdate(change)
         // Keep requests bounded for large OPML imports and retain individual failures.
@@ -220,47 +207,12 @@ export default {
         const all = await fetchSummary()
         if (gen !== generation) return // superseded while this was in flight
         actions.set({ all, summaryLoaded: true, refreshError: null })
-        actions.assignHome()
       } catch (error) {
         if (gen !== generation) return
         console.error('tarangcat: refresh failed', error)
         actions.set({ refreshError: 'Articles could not be refreshed. Check the connection to Tarang and try again.' })
       }
     },
-
-    assignHome: () => async (state, actions) => {
-      if (homeAssigned) return
-      const ids = Object.keys(state.all).filter(id => !state.all[id].category)
-      if (!ids.length) return
-      homeAssigned = true
-      ++generation
-      ++activeWrites
-      try {
-        const write = await prepareFollowUpdate({ category: HOUSE })
-        for (const id of ids) {
-          if (userCategoryWrites.has(id)) continue
-          homeWrite = write(id)
-          try {
-            await homeWrite
-            actions.applyHomeResult(id)
-          } catch {
-            // Still displayed on the home tab; left for a later page load.
-          } finally {
-            homeWrite = null
-          }
-        }
-      } catch (error) {
-        console.error('tarangcat: could not assign feeds to Home', error)
-      } finally {
-        ++generation
-        --activeWrites
-        // Refreshes skipped while the move was running (e.g. opening Starred) catch up now.
-        if (!activeWrites) actions.refresh()
-      }
-    },
-    applyHomeResult: id => state => state.all[id] && !state.all[id].category
-      ? { all: { ...state.all, [id]: { ...state.all[id], category: HOUSE } } }
-      : {},
 
     changeSetting: ({ name, value }) => (state, actions) => {
       const settings = { ...state.settings }
@@ -344,7 +296,6 @@ export default {
             return
           }
 
-          await claimCategoryWrites([follow.id])
           await editFollow(follow.id, follow)
           actions.location.go(tagPath(follow))
         } catch (error) {
@@ -364,7 +315,6 @@ export default {
 
       const run = async () => {
         try {
-          await claimCategoryWrites([follow.id])
           await removeFollow(follow.id)
           const all = { ...state.all }
           delete all[follow.id]

@@ -80,7 +80,7 @@ export interface Follow {
   /** Subscription URL used by Tarang to fetch the feed. */
   feed: string
   title: string
-  /** Absent means Tarang has no category for it yet; the view shows it on the home tab. */
+  /** Absent means Tarang has no category for it; the view shows it on the home tab. */
   category?: string
   importance: number
   fetchesContent: boolean

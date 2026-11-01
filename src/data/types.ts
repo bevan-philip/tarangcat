@@ -80,7 +80,7 @@ export interface Follow {
   /** Subscription URL used by Tarang to fetch the feed. */
   feed: string
   title: string
-  /** Absent means the follow appears under Fraidycat's home category. */
+  /** Absent means Tarang has no category for it yet; the view shows it on the home tab. */
   category?: string
   importance: number
   fetchesContent: boolean

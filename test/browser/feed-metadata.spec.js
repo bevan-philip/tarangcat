@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test'
 
 const subscriptionUrl = 'https://example.test/feed.xml'
 const websiteUrl = 'https://example.test/site'
+const home = { pk: 3, name: '🏠' }
 
 function feed(overrides = {}) {
   return {
@@ -9,8 +10,8 @@ function feed(overrides = {}) {
     name: 'Detected title',
     url: subscriptionUrl,
     display_url: websiteUrl,
-    category_id: null,
-    category: null,
+    category_id: home.pk,
+    category: home,
     refresh_interval: 300,
     articles: [],
     ...overrides
@@ -29,7 +30,8 @@ test('discovery-based add uses Tarang metadata and automatic titles', async ({ p
   await page.route('**/tarang/v1/summary', route => route.fulfill({
     json: { categories: [], feeds: created ? [current] : [] }
   }))
-  await page.route('**/tarang/v1/category', route => route.fulfill({ json: [] }))
+  await page.route('**/tarang/v1/category', route => route.fulfill({ json: [home] }))
+  await page.route('**/tarang/v1/category/*', route => route.fulfill({ status: 409 }))
   await page.route('**/tarang/v1/feed', route => {
     postBody = route.request().postDataJSON()
     created = true
@@ -48,7 +50,7 @@ test('discovery-based add uses Tarang metadata and automatic titles', async ({ p
     url: 'https://example.test/homepage',
     discovery: true,
     refresh_interval: 300,
-    category_id: null
+    category_id: home.pk
   })
 })
 
@@ -59,7 +61,8 @@ test('editing and clearing the website URL preserves the subscription URL', asyn
   await page.route('**/tarang/v1/summary', route => route.fulfill({
     json: { categories: [], feeds: [current] }
   }))
-  await page.route('**/tarang/v1/category', route => route.fulfill({ json: [] }))
+  await page.route('**/tarang/v1/category', route => route.fulfill({ json: [home] }))
+  await page.route('**/tarang/v1/category/*', route => route.fulfill({ status: 409 }))
   await page.route('**/tarang/v1/feed/42', route => {
     if (route.request().method() === 'PATCH') {
       const body = route.request().postDataJSON()
@@ -94,7 +97,8 @@ test('editing and clearing the website URL preserves the subscription URL', asyn
 test('a discovery error is shown and leaves the add form usable', async ({ page }) => {
   let message
   await page.route('**/tarang/v1/summary', route => route.fulfill({ json: { categories: [], feeds: [] } }))
-  await page.route('**/tarang/v1/category', route => route.fulfill({ json: [] }))
+  await page.route('**/tarang/v1/category', route => route.fulfill({ json: [home] }))
+  await page.route('**/tarang/v1/category/*', route => route.fulfill({ status: 409 }))
   await page.route('**/tarang/v1/feed', route => route.fulfill({
     status: 400,
     contentType: 'application/json',

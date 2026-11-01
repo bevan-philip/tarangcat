@@ -35,6 +35,6 @@ Stop both commands with Ctrl+C. The local server only serves files; it does not 
 
 ## Manage feeds in a category
 
-Open a category and frequency, then select Manage feeds. Checkboxes appear beside the feeds on the page, with bulk actions above the list. Select individual feeds or Select all, choose an action, and apply it to the selection. Only feeds at the current frequency are included. Available actions change importance, move feeds to an existing or new category, or delete feeds and their cached articles. A blank destination moves feeds to Home. Deletion requires confirmation.
+Open a category and frequency, then select Manage feeds. Checkboxes appear beside the feeds on the page, with bulk actions above the list. Select individual feeds or Select all, choose an action, and apply it to the selection. Only feeds at the current frequency are included. Available actions change importance, move feeds to an existing or new category, or delete feeds and their cached articles. A blank destination moves feeds to Home, the 🏠 category. Deletion requires confirmation.
 
 Updates apply separately to each feed. Successful updates clear from the selection; failed updates remain selected for retry. Changing category or frequency, or toggling Manage feeds off, clears the selection. An update already in progress continues after the controls are hidden.

@@ -1,13 +1,13 @@
 import { test, expect } from '@playwright/test'
 
 async function setup(page) {
-  const categories = [{ pk: 7, name: 'News' }, { pk: 8, name: '🌱' }]
+  const categories = [{ pk: 3, name: '🏠' }, { pk: 7, name: 'News' }, { pk: 8, name: '🌱' }]
   let feeds = [
-    { pk: 1, name: 'First', category: categories[0], refresh_interval: 300 },
-    { pk: 2, name: 'Second', category: categories[0], refresh_interval: 300 },
-    { pk: 5, name: 'Rare feed', category: categories[0], refresh_interval: 86400 },
-    { pk: 3, name: 'Outside', category: categories[1], refresh_interval: 300 },
-    { pk: 4, name: 'Home feed', category: null, refresh_interval: 300 },
+    { pk: 1, name: 'First', category: categories[1], refresh_interval: 300 },
+    { pk: 2, name: 'Second', category: categories[1], refresh_interval: 300 },
+    { pk: 5, name: 'Rare feed', category: categories[1], refresh_interval: 86400 },
+    { pk: 3, name: 'Outside', category: categories[2], refresh_interval: 300 },
+    { pk: 4, name: 'Home feed', category: categories[0], refresh_interval: 300 },
   ].map(feed => ({ ...feed, url: `https://example.test/${feed.pk}`, articles: [] }))
   const calls = []
   const control = { fail: 0, delay: null }
@@ -66,7 +66,7 @@ test('moves selected feeds to an existing category and Home without changing imp
   await expect(page.getByRole('checkbox')).toHaveCount(0)
   expect(calls).toEqual([
     { id: 1, method: 'PATCH', body: { category_id: 8 } },
-    { id: 2, method: 'PATCH', body: { category_id: null } },
+    { id: 2, method: 'PATCH', body: { category_id: 3 } },
   ])
 })
 

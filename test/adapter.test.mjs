@@ -119,28 +119,60 @@ test('fetchSummary reads the current summary endpoint and converts an unassigned
   assert.deepEqual(follows['42'].posts, [])
 })
 
-test('addFollow sends null for an unassigned category', async () => {
-  let request
+test('addFollow assigns an unassigned feed to the Home category', async () => {
+  const requests = []
   globalThis.fetch = async (url, init) => {
-    request = { url, init }
-    return jsonResponse({ id: 42, name: 'Example' })
+    requests.push({ url, init })
+    return url.startsWith('/tarang/v1/category/')
+      ? jsonResponse({ id: 3, name: '🏠' })
+      : jsonResponse({ id: 42, name: 'Example' })
   }
 
-  assert.equal(await adapter.addFollow({ url: 'https://example.test/feed' }), '42')
-  assert.equal(request.url, '/tarang/v1/feed')
-  assert.equal(request.init.method, 'POST')
-  assert.deepEqual(requestBody(request.init), {
+  assert.equal(await adapter.addFollow({ url: 'https://example.test/feed', category: '  ' }), '42')
+  assert.deepEqual(requests.map(({ url }) => url), ['/tarang/v1/category/%F0%9F%8F%A0', '/tarang/v1/feed'])
+  assert.equal(requests[1].init.method, 'POST')
+  assert.deepEqual(requestBody(requests[1].init), {
     url: 'https://example.test/feed',
     discovery: true,
     refresh_interval: 300,
-    category_id: null
+    category_id: 3
   })
+})
+
+test('the Home category is reused when it already exists', async () => {
+  const requests = []
+  globalThis.fetch = async (url, init) => {
+    requests.push({ url, init })
+    if (url.startsWith('/tarang/v1/category/')) return jsonResponse({ error: 'exists' }, 409)
+    if (url === '/tarang/v1/category') return jsonResponse([{ pk: 7, name: 'News' }, { pk: 3, name: '🏠' }])
+    return jsonResponse({ id: 42 })
+  }
+
+  await adapter.addFollow({ url: 'https://example.test/feed' })
+  assert.equal(requestBody(requests.at(-1).init).category_id, 3)
+})
+
+test('assignHomeCategory moves uncategorised feeds and reports the ones that moved', async () => {
+  const calls = []
+  globalThis.fetch = async (url, init) => {
+    calls.push({ url, init })
+    if (init.method === 'POST') return jsonResponse({ id: 3 })
+    return url.endsWith('/2') ? jsonResponse({}, 503) : new Response(null, { status: 204 })
+  }
+
+  assert.deepEqual(await adapter.assignHomeCategory(['1', '2', '4']), ['1', '4'])
+  assert.deepEqual(calls.map(({ url }) => url), [
+    '/tarang/v1/category/%F0%9F%8F%A0', '/tarang/v1/feed/1', '/tarang/v1/feed/2', '/tarang/v1/feed/4'
+  ])
+  for (const call of calls.slice(1)) assert.deepEqual(requestBody(call.init), { category_id: 3 })
+  assert.deepEqual(await adapter.assignHomeCategory([]), [])
+  assert.equal(calls.length, 4)
 })
 
 test('addFollow preserves an explicit title and omits blank titles', async () => {
   const requests = []
   globalThis.fetch = async (url, init) => {
-    requests.push({ url, init })
+    if (url === '/tarang/v1/feed') requests.push({ url, init })
     return jsonResponse({ id: requests.length })
   }
 
@@ -211,16 +243,17 @@ test('editFollow sends a selected category id', async () => {
   assert.equal(requestBody(requests[1].init).category_id, 7)
 })
 
-test('editFollow clears a category with null', async () => {
-  let request
+test('editFollow moves a cleared category to Home', async () => {
+  const requests = []
   globalThis.fetch = async (url, init) => {
-    request = { url, init }
-    return jsonResponse({})
+    requests.push({ url, init })
+    return url.startsWith('/tarang/v1/category/') ? jsonResponse({ id: 3 }) : jsonResponse({})
   }
 
-  await adapter.editFollow('42', { importance: 0 })
-  assert.equal(request.url, '/tarang/v1/feed/42')
-  assert.equal(requestBody(request.init).category_id, null)
+  await adapter.editFollow('42', { category: '', importance: 0 })
+  assert.equal(requests[0].url, '/tarang/v1/category/%F0%9F%8F%A0')
+  assert.equal(requests[1].url, '/tarang/v1/feed/42')
+  assert.equal(requestBody(requests[1].init).category_id, 3)
 })
 
 test('fetchArticle loads full content directly with the feed id', async () => {
@@ -300,7 +333,7 @@ test('titleless content fallback fetches only displayed previews that lack a sum
 test('editFollow updates, clears, and can omit the website URL independently', async () => {
   const requests = []
   globalThis.fetch = async (url, init) => {
-    requests.push({ url, init })
+    if (url === '/tarang/v1/feed/42') requests.push({ url, init })
     return jsonResponse({})
   }
 

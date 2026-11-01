@@ -122,3 +122,33 @@ for (const mode of ['add', 'edit/42']) {
     expect(requests).toBe(0)
   })
 }
+
+test('feeds without a category are moved into the explicit Home category', async ({ page }) => {
+  const home = { pk: 3, name: '🏠' }
+  let feeds = [
+    { pk: 1, name: 'Loose', url: 'https://example.test/1', category: null, category_id: null, refresh_interval: 300, articles: [] },
+    { pk: 2, name: 'Sorted', url: 'https://example.test/2', category: categories[0], category_id: 7, refresh_interval: 300, articles: [] },
+  ]
+  const posts = []
+  const patches = []
+  await page.route('**/tarang/v1/summary', route => route.fulfill({ json: { categories: [...categories, home], feeds } }))
+  await page.route('**/tarang/v1/category', route => route.fulfill({ json: [...categories, home] }))
+  await page.route('**/tarang/v1/category/*', route => {
+    posts.push(decodeURIComponent(route.request().url().split('/').pop()))
+    return route.fulfill({ status: 409 })
+  })
+  await page.route('**/tarang/v1/feed/*', route => {
+    const id = Number(route.request().url().split('/').pop())
+    const body = route.request().postDataJSON()
+    patches.push({ id, body })
+    feeds = feeds.map(feed => feed.pk === id ? { ...feed, category: home, category_id: body.category_id } : feed)
+    return route.fulfill({ status: 204 })
+  })
+  await page.goto('/')
+  await expect(page.locator('#tags li a')).toHaveText(['🏠', 'News and essays'])
+  await expect.poll(() => patches).toEqual([{ id: 1, body: { category_id: 3 } }])
+  expect(posts).toEqual(['🏠'])
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+  await expect(page.getByRole('link', { name: 'Loose' })).toBeVisible()
+  expect(patches).toHaveLength(1)
+})

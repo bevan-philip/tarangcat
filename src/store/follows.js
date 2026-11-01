@@ -7,12 +7,10 @@
 // The action names and state keys are dictated by the vendored view.
 //
 
-import { addFollow, ApiError, editFollow, fetchArticle, fetchFollow, fetchSummary, fetchStarred, updateArticleState, listCategories, removeFollow } from '../data/tarang'
+import { addFollow, ApiError, assignHomeCategory, editFollow, fetchArticle, fetchFollow, fetchSummary, fetchStarred, HOME_CATEGORY as HOUSE, updateArticleState, listCategories, removeFollow } from '../data/tarang'
 import { loadSettings, saveSettings } from './settings.js'
 import { visibleCategories } from './categories.js'
 import { prepareFollowUpdate } from '../data/tarang'
-
-const HOUSE = '\u{1f3e0}'
 
 function tagPath(follow) {
   const category = follow.category || HOUSE
@@ -37,6 +35,9 @@ let categoryGeneration = 0
 const articleWrites = new Map()
 const articleResults = new Map()
 let activeWrites = 0
+// Feeds without a category (from before Home was explicit, or added by another reader)
+// are moved into the Home category once per page load.
+let homeAssigned = false
 
 export default {
   state: {
@@ -81,7 +82,7 @@ export default {
       ++activeWrites
       const failed = []
       try {
-        const change = bulk.operation === 'category' ? { category: bulk.destination.trim() } : { importance: bulk.importance }
+        const change = bulk.operation === 'category' ? { category: bulk.destination.trim() || HOUSE } : { importance: bulk.importance }
         const write = bulk.operation === 'delete' ? removeFollow : await prepareFollowUpdate(change)
         // Keep requests bounded for large OPML imports and retain individual failures.
         for (const id of ids) {
@@ -209,11 +210,35 @@ export default {
         const all = await fetchSummary()
         if (gen !== generation) return // superseded while this was in flight
         actions.set({ all, summaryLoaded: true, refreshError: null })
+        actions.assignHome()
       } catch (error) {
         if (gen !== generation) return
         console.error('tarangcat: refresh failed', error)
         actions.set({ refreshError: 'Articles could not be refreshed. Check the connection to Tarang and try again.' })
       }
+    },
+
+    assignHome: () => async (state, actions) => {
+      if (homeAssigned) return
+      const ids = Object.keys(state.all).filter(id => !state.all[id].category)
+      if (!ids.length) return
+      homeAssigned = true
+      ++generation
+      ++activeWrites
+      try {
+        const moved = await assignHomeCategory(ids)
+        actions.applyHomeResult(moved)
+      } catch (error) {
+        console.error('tarangcat: could not assign feeds to Home', error)
+      } finally {
+        ++generation
+        --activeWrites
+      }
+    },
+    applyHomeResult: ids => state => {
+      const all = { ...state.all }
+      for (const id of ids) if (all[id] && !all[id].category) all[id] = { ...all[id], category: HOUSE }
+      return { all }
     },
 
     changeSetting: ({ name, value }) => (state, actions) => {

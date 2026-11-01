@@ -1,4 +1,4 @@
-const HOME = '\u{1f3e0}'
+import { HOME_CATEGORY as HOME } from '../data/tarang'
 
 export function visibleCategories(follows) {
   return [...new Set([HOME, ...Object.values(follows).map(follow => follow.category || HOME)])]

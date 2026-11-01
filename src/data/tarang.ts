@@ -7,6 +7,12 @@ import type { Follow, Post, WireArticle, WireCategory, WireFeed, WireFeedDetail,
 declare const __TARANG_API_BASE__: string
 const API_BASE = typeof __TARANG_API_BASE__ === 'undefined' ? '' : __TARANG_API_BASE__
 
+/**
+ * Fraidycat's home tab. Feeds without a chosen category are stored in a real Tarang
+ * category with this name, so other readers see a named category instead of a blank one.
+ */
+export const HOME_CATEGORY = '\u{1f3e0}'
+
 export class ApiError extends Error {
   readonly status: number
 
@@ -108,7 +114,8 @@ function toFollow(feed: WireFeed): Follow {
     // "nothing to draw" and renders no sparkline.
     activity: []
   }
-  // Absent when there is no category: the view treats this as the home category.
+  // Absent for feeds with no Tarang category (saved by earlier versions or another
+  // reader): the view shows them on the home tab.
   if (feed.category) follow.category = feed.category.name
   return follow
 }
@@ -179,9 +186,9 @@ async function ensureCategory(name: string): Promise<number> {
   }
 }
 
-async function categoryIdForName(name: string | undefined): Promise<number | null> {
-  const trimmed = (name ?? '').trim()
-  return trimmed ? ensureCategory(trimmed) : null
+/** A blank name means the home tab, which is an explicit Tarang category. */
+async function categoryIdForName(name: string | undefined): Promise<number> {
+  return ensureCategory((name ?? '').trim() || HOME_CATEGORY)
 }
 
 export interface FollowDraft {
@@ -192,7 +199,7 @@ export interface FollowDraft {
   importance?: number
 }
 
-/** New follow: resolve the optional category, then include it in the feed POST. */
+/** New follow: resolve the category (Home when blank), then include it in the feed POST. */
 export async function addFollow(draft: FollowDraft): Promise<string> {
   const url = (draft.url ?? '').trim()
   const title = (draft.title ?? '').trim()
@@ -211,7 +218,7 @@ export async function addFollow(draft: FollowDraft): Promise<string> {
 }
 
 /**
- * Existing follow: PATCH the changed fields, including the optional category. An empty
+ * Existing follow: PATCH the changed fields, including the category (Home when blank). An empty
  * title is treated as "leave the name alone" — Tarang has
  * no separate "feed's own title" to fall back to the way Miniflux does.
  */

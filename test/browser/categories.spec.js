@@ -122,3 +122,25 @@ for (const mode of ['add', 'edit/42']) {
     expect(requests).toBe(0)
   })
 }
+
+test('feeds without a category appear on the Home tab and are left unchanged', async ({ page }) => {
+  const writes = []
+  await page.route('**/tarang/v1/summary', route => route.fulfill({ json: { categories, feeds: [
+    { pk: 1, name: 'Loose', url: 'https://example.test/1', category: null, category_id: null, refresh_interval: 300, articles: [] },
+    { pk: 2, name: 'Sorted', url: 'https://example.test/2', category: categories[0], category_id: 7, refresh_interval: 300, articles: [] },
+  ] } }))
+  await page.route('**/tarang/v1/category/*', route => {
+    writes.push(route.request().url())
+    return route.fulfill({ status: 409 })
+  })
+  await page.route('**/tarang/v1/feed/*', route => {
+    writes.push(route.request().url())
+    return route.fulfill({ status: 204 })
+  })
+  await page.goto('/')
+  await expect(page.locator('#tags li a')).toHaveText(['🏠', 'News and essays'])
+  await expect(page.getByRole('link', { name: 'Loose' })).toBeVisible()
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+  await expect(page.getByRole('link', { name: 'Loose' })).toBeVisible()
+  expect(writes).toEqual([])
+})

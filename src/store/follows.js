@@ -7,12 +7,10 @@
 // The action names and state keys are dictated by the vendored view.
 //
 
-import { addFollow, ApiError, editFollow, fetchArticle, fetchFollow, fetchSummary, fetchStarred, updateArticleState, listCategories, removeFollow } from '../data/tarang'
+import { addFollow, ApiError, editFollow, fetchArticle, fetchFollow, fetchSummary, fetchStarred, HOME_CATEGORY as HOUSE, updateArticleState, listCategories, removeFollow } from '../data/tarang'
 import { loadSettings, saveSettings } from './settings.js'
 import { visibleCategories } from './categories.js'
 import { prepareFollowUpdate } from '../data/tarang'
-
-const HOUSE = '\u{1f3e0}'
 
 function tagPath(follow) {
   const category = follow.category || HOUSE
@@ -81,7 +79,7 @@ export default {
       ++activeWrites
       const failed = []
       try {
-        const change = bulk.operation === 'category' ? { category: bulk.destination.trim() } : { importance: bulk.importance }
+        const change = bulk.operation === 'category' ? { category: bulk.destination.trim() || HOUSE } : { importance: bulk.importance }
         const write = bulk.operation === 'delete' ? removeFollow : await prepareFollowUpdate(change)
         // Keep requests bounded for large OPML imports and retain individual failures.
         for (const id of ids) {
